@@ -1,0 +1,14 @@
+# Crie arquivo requirements-windows.txt
+@"
+# Framework Web
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+
+# IA e ML (versão sem Rust)
+google-generativeai==0.3.1
+
+# Utilitários
+python-dotenv==1.0.0
+python-multipart==0.0.6
+"@ | Out-File -FilePath requirements-windows.txt -Encoding utf8

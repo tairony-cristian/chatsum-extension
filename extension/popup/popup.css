@@ -1,0 +1,307 @@
+/**
+ * CSS do ChatSum - Resumidor de Atendimentos
+ * Variáveis CSS para fácil personalização
+ */
+
+:root {
+  --primary-color: #cc0000;
+  --primary-hover: #990000;
+  --success-color: #2a9d8f;
+  --error-color: #e63946;
+  --warning-color: #f4a261;
+  --gray-bg: #f5f5f5;
+  --border-color: #ccc;
+  --text-color: #222;
+  --shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  width: 360px;
+  background: #fff;
+  color: var(--text-color);
+  user-select: none;
+}
+
+.container {
+  padding: 16px;
+}
+
+/* Header */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--primary-color);
+}
+
+header h2 {
+  font-size: 20px;
+  color: var(--primary-color);
+  margin: 0;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.icon-btn:hover {
+  background: var(--gray-bg);
+}
+
+/* Contador */
+.contador {
+  background: var(--gray-bg);
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+#contadorValor {
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+/* Seletor de Modo */
+.modo-selector {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.modo-selector label:first-child {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: var(--text-color);
+}
+
+.radio-group {
+  display: flex;
+  gap: 12px;
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  cursor: pointer;
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.radio-group label:hover {
+  background: var(--gray-bg);
+}
+
+.radio-group input[type="radio"] {
+  margin-right: 6px;
+  cursor: pointer;
+}
+
+/* Botões */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow);
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(204, 0, 0, 0.3);
+}
+
+.btn-primary:disabled {
+  background: #f5c0c0;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  background: #888;
+  color: white;
+  font-size: 13px;
+}
+
+.btn-secondary:hover {
+  background: #666;
+}
+
+.btn-danger {
+  background: var(--error-color);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #d62828;
+}
+
+.btn-link {
+  background: transparent;
+  color: var(--primary-color);
+  text-decoration: underline;
+  box-shadow: none;
+  font-size: 12px;
+}
+
+.btn-link:hover {
+  color: var(--primary-hover);
+}
+
+/* Status */
+.status {
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 12px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-info {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.status-ok {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-erro {
+  background: #ffebee;
+  color: #c62828;
+}
+
+/* Resultado */
+.resultado {
+  background: #fafafa;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 14px;
+  max-height: 400px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #333;
+  user-select: text;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.resultado:empty {
+  display: none;
+}
+
+.resultado b {
+  font-weight: 700;
+}
+
+/* Scrollbar customizada */
+.resultado::-webkit-scrollbar {
+  width: 8px;
+}
+
+.resultado::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.resultado::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+.resultado::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* Aviso de Bloqueio */
+.aviso-bloqueio {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.aviso-bloqueio strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #856404;
+}
+
+.aviso-bloqueio p {
+  font-size: 12px;
+  color: #856404;
+  margin-bottom: 10px;
+}
+
+/* Animações */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.btn-primary:disabled {
+  animation: pulse 1.5s infinite;
+}
+
+/* Responsividade */
+@media (max-width: 360px) {
+  body {
+    width: 320px;
+  }
+  
+  .container {
+    padding: 12px;
+  }
+}

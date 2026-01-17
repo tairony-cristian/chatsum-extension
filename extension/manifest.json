@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "ChatSum - Resumidor de Atendimentos",
+  "version": "2.0.0",
+  "description": "Gera resumos técnicos de conversas de suporte usando IA",
+  
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  
+  "host_permissions": [
+    "http://localhost:8000/*"
+  ],
+  
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    }
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  
+  "options_page": "options/options.html",
+  
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  }
+}

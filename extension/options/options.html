@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatSum - Configurações</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo">
+        <img src="../assets/icons/icon128.png" alt="ChatSum">
+        <div>
+          <h1>ChatSum</h1>
+          <p>Configurações da Extensão</p>
+        </div>
+      </div>
+      <button id="btnFechar" class="btn-secondary">✖ Fechar</button>
+    </header>
+
+    <!-- Tabs de Navegação -->
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="geral">⚙️ Geral</button>
+      <button class="tab-btn" data-tab="prompts">📝 Prompts</button>
+      <button class="tab-btn" data-tab="avancado">🔧 Avançado</button>
+      <button class="tab-btn" data-tab="sobre">ℹ️ Sobre</button>
+    </nav>
+
+    <!-- Conteúdo das Tabs -->
+    <main class="content">
+      
+      <!-- TAB: Geral -->
+      <section id="tab-geral" class="tab-content active">
+        <h2>Configurações Gerais</h2>
+        
+        <!-- Modo Padrão -->
+        <div class="setting-group">
+          <label class="setting-label">
+            <span class="label-text">🎯 Modo de Resumo Padrão</span>
+            <span class="label-description">Escolha o modo usado por padrão ao gerar resumos</span>
+          </label>
+          <div class="radio-group">
+            <label>
+              <input type="radio" name="modoDefault" value="ultimo_tecnico" checked>
+              <span>Último Técnico</span>
+              <small>Resume apenas ações do último técnico</small>
+            </label>
+            <label>
+              <input type="radio" name="modoDefault" value="completo">
+              <span>Completo</span>
+              <small>Resume ações de todos os técnicos</small>
+            </label>
+          </div>
+        </div>
+
+        <!-- URL do Servidor -->
+        <div class="setting-group">
+          <label class="setting-label">
+            <span class="label-text">🌐 URL do Servidor</span>
+            <span class="label-description">Endereço do servidor local (padrão: http://localhost:8000)</span>
+          </label>
+          <input 
+            type="text" 
+            id="serverUrl" 
+            class="input-text" 
+            placeholder="http://localhost:8000"
+            value="http://localhost:8000"
+          >
+        </div>
+
+        <!-- Auto-copiar -->
+        <div class="setting-group">
+          <label class="setting-checkbox">
+            <input type="checkbox" id="autoCopiar">
+            <span>📋 Copiar automaticamente após gerar resumo</span>
+          </label>
+        </div>
+
+        <!-- Notificações -->
+        <div class="setting-group">
+          <label class="setting-checkbox">
+            <input type="checkbox" id="notificacoes" checked>
+            <span>🔔 Mostrar notificações quando resumo estiver pronto</span>
+          </label>
+        </div>
+
+        <button id="btnSalvarGeral" class="btn-primary">💾 Salvar Configurações</button>
+      </section>
+
+      <!-- TAB: Prompts -->
+      <section id="tab-prompts" class="tab-content">
+        <h2>Gerenciamento de Prompts</h2>
+        
+        <!-- Seletor de Prompt -->
+        <div class="setting-group">
+          <label class="setting-label">
+            <span class="label-text">📝 Prompt Ativo</span>
+            <span class="label-description">Escolha qual prompt usar para gerar resumos</span>
+          </label>
+          <select id="promptSelector" class="select-input">
+            <option value="default">Padrão do Sistema</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+
+        <!-- Editor de Prompt Personalizado -->
+        <div id="editorPrompt" class="setting-group" style="display: none;">
+          <label class="setting-label">
+            <span class="label-text">✏️ Editor de Prompt Personalizado</span>
+            <span class="label-description">
+              Customize o prompt usado pela IA. Use <code>{ultimo_tecnico}</code> para inserir o nome do técnico.
+            </span>
+          </label>
+          
+          <textarea 
+            id="promptCustom" 
+            class="textarea-prompt" 
+            rows="15"
+            placeholder="Digite seu prompt personalizado aqui..."
+          ></textarea>
+          
+          <div class="prompt-actions">
+            <button id="btnPreviewPrompt" class="btn-secondary">👁️ Preview</button>
+            <button id="btnResetPrompt" class="btn-secondary">🔄 Restaurar Padrão</button>
+            <button id="btnValidarPrompt" class="btn-secondary">✓ Validar</button>
+          </div>
+          
+          <div id="promptStatus" class="prompt-status"></div>
+        </div>
+
+        <!-- Variáveis Disponíveis -->
+        <div class="setting-group">
+          <details class="help-box">
+            <summary>📚 Variáveis Disponíveis</summary>
+            <table class="variables-table">
+              <thead>
+                <tr>
+                  <th>Variável</th>
+                  <th>Descrição</th>
+                  <th>Exemplo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>{ultimo_tecnico}</code></td>
+                  <td>Nome do último técnico que atendeu</td>
+                  <td>João Silva</td>
+                </tr>
+                <tr>
+                  <td><code>{data}</code></td>
+                  <td>Data atual (futuro)</td>
+                  <td>14/01/2025</td>
+                </tr>
+                <tr>
+                  <td><code>{hora}</code></td>
+                  <td>Hora atual (futuro)</td>
+                  <td>15:30</td>
+                </tr>
+              </tbody>
+            </table>
+          </details>
+        </div>
+
+        <button id="btnSalvarPrompt" class="btn-primary">💾 Salvar Prompt</button>
+      </section>
+
+      <!-- TAB: Avançado -->
+      <section id="tab-avancado" class="tab-content">
+        <h2>Configurações Avançadas</h2>
+        
+        <!-- Reset Contador -->
+        <div class="setting-group">
+          <label class="setting-label">
+            <span class="label-text">🔄 Resetar Contador</span>
+            <span class="label-description">Zera o contador de requisições diárias</span>
+          </label>
+          <button id="btnResetContador" class="btn-danger">🗑️ Resetar Contador</button>
+        </div>
+
+        <!-- Limpar Cache -->
+        <div class="setting-group">
+          <label class="setting-label">
+            <span class="label-text">🧹 Limpar Cache</span>
+            <span class="label-description">Remove todos os resumos salvos localmente</span>
+          </label>
+          <button id="btnLimparCache" class="btn-danger">🗑️ Limpar Cache</button>
+        </div>
+
+        <!-- Exportar Configurações -->
+        <div class="setting-group">
+          <label class="setting-label">
+            <span class="label-text">📤 Exportar/Importar</span>
+            <span class="label-description">Salve ou restaure suas configurações</span>
+          </label>
+          <div class="button-group">
+            <button id="btnExportar" class="btn-secondary">📥 Exportar</button>
+            <button id="btnImportar" class="btn-secondary">📤 Importar</button>
+            <input type="file" id="fileImport" accept=".json" style="display: none;">
+          </div>
+        </div>
+
+        <!-- Debug Mode -->
+        <div class="setting-group">
+          <label class="setting-checkbox">
+            <input type="checkbox" id="debugMode">
+            <span>🐛 Modo Debug (mostra logs no console)</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- TAB: Sobre -->
+      <section id="tab-sobre" class="tab-content">
+        <div class="about-section">
+          <img src="../assets/icons/icon128.png" alt="ChatSum" class="about-icon">
+          
+          <h2>ChatSum</h2>
+          <p class="version">Versão 2.0.0</p>
+          
+          <p class="description">
+            Extensão para geração automática de resumos técnicos de atendimentos
+            usando Inteligência Artificial (Google Gemini).
+          </p>
+
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Desenvolvedor:</span>
+              <span class="info-value">Seu Nome</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Licença:</span>
+              <span class="info-value">MIT</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Tecnologias:</span>
+              <span class="info-value">Chrome Extension API, FastAPI, Google Gemini AI</span>
+            </div>
+          </div>
+
+          <div class="links">
+            <a href="#" id="linkGithub" class="link-btn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.840 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.430.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+              </svg>
+              GitHub
+            </a>
+            <a href="#" id="linkDocumentacao" class="link-btn">📖 Documentação</a>
+            <a href="#" id="linkSuporte" class="link-btn">💬 Suporte</a>
+          </div>
+
+          <div class="changelog">
+            <h3>📝 Últimas Atualizações (v2.0.0)</h3>
+            <ul>
+              <li>✨ Sistema de prompts personalizáveis</li>
+              <li>🔄 Modo de resumo completo (todos os técnicos)</li>
+              <li>🛡️ Sistema de lock para múltiplas abas</li>
+              <li>🎨 Interface redesenhada</li>
+              <li>⚡ Background processing</li>
+              <li>🔒 Melhorias de segurança e sanitização</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Toast de Notificação -->
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script src="options.js" type="module"></script>
+</body>
+</html>

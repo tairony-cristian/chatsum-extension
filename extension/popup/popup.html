@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>ChatSum</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 5px;
+      background: #fff;
+      color: #222;
+      width: 320px;
+      user-select: none;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    h2 {
+      margin: 0;
+      color: #cc0000;
+      font-size: 18px;
+    }
+
+    .settings-icon {
+      cursor: pointer;
+      font-size: 20px;
+      color: #666;
+      transition: color 0.3s;
+    }
+
+    .settings-icon:hover {
+      color: #cc0000;
+    }
+
+    #modoResumo {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 13px;
+      margin-bottom: 10px;
+      background: white;
+    }
+
+    #status {
+      font-size: 14px;
+      margin-top: 10px;
+      min-height: 22px;
+      font-weight: bold;
+      transition: color 0.3s ease;
+    }
+
+    .status-info {
+      color: #cc0000;
+    }
+    .status-ok {
+      color: #2a9d8f;
+    }
+    .status-erro {
+      color: #e63946;
+    }
+
+    #contador {
+      font-size: 12px;
+      color: #666;
+      text-align: center;
+      margin: 8px 0;
+      padding: 5px;
+      background: #f5f5f5;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    button {
+      width: 100%;
+      padding: 8px;
+      background-color: #cc0000;
+      color: white;
+      border: none;
+      font-weight: 700;
+      font-size: 13px;
+      margin-top: 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(204, 0, 0, 0.4);
+      transition: background-color 0.25s ease;
+    }
+
+    button:hover:not(:disabled) {
+      background-color: #990000;
+    }
+
+    button:disabled {
+      background-color: #f5c0c0;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    #copiarResumo, #apagarResumo {
+      display: none;
+      background-color: #888;
+      font-size: 12px;
+      padding: 6px 12px;
+      margin-top: 8px;
+    }
+
+    #copiarResumo:hover, #apagarResumo:hover {
+      background-color: #666;
+    }
+
+    #apagarResumo {
+      background-color: #e63946;
+    }
+
+    #apagarResumo:hover {
+      background-color: #d62828;
+    }
+
+    #resultado {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 13px;
+      margin-top: 15px;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      color: #333;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+      user-select: text;
+    }
+
+    #resultado:empty {
+      display: none;
+    }
+
+    #resultado::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #resultado::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    #resultado::-webkit-scrollbar-thumb {
+      background: #ccc;
+      border-radius: 4px;
+    }
+
+    #resultado::-webkit-scrollbar-thumb:hover {
+      background: #999;
+    }
+
+    .label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 5px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>📋 ChatSum</h2>
+    <span class="settings-icon" id="abrirConfig" title="Configurações">⚙️</span>
+  </div>
+
+  <div id="contador">📊 Requisições hoje: 0</div>
+
+  <label class="label" for="modoResumo">Modo de Resumo:</label>
+  <select id="modoResumo">
+    <option value="ultimo_tecnico">✅ Último Técnico</option>
+    <option value="completo">⭕ Completo (Todos)</option>
+  </select>
+
+  <button id="resumir">🔍 Capturar e Resumir</button>
+  <button id="copiarResumo">📋 Copiar com Formatação</button>
+  <button id="apagarResumo">🗑️ Limpar</button>
+
+  <div id="status" class="status-info">⌛ Aguardando ação...</div>
+  <div id="resultado"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

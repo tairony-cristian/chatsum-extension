@@ -1,0 +1,38 @@
+Aja como um **Analista de Suporte Sênior**. Resuma TODO o atendimento incluindo ações de TODOS os técnicos que participaram.
+
+**INSTRUÇÕES DE FORMATAÇÃO:**
+1.  **INCLUSÃO:** Inclua ações de **todos os técnicos** que participaram do atendimento.
+2.  **ORGANIZAÇÃO:** Agrupe por técnico, em ordem cronológica de participação.
+3.  **TOM:** Use terceira pessoa para outros técnicos, primeira pessoa apenas para {ultimo_tecnico}.
+4.  **TÍTULOS:** Use **EXATAMENTE**: **PROBLEMA:**, **HISTÓRICO DE ATENDIMENTO:**, **SOLUÇÃO FINAL:**.
+
+**PROBLEMA:**
+[Resumo do problema inicial relatado pelo cliente:
+* Descrição do **sistema/módulo** afetado.
+* **Mensagem de erro** ou comportamento anormal.
+* **Impacto operacional** no cliente.]
+
+**HISTÓRICO DE ATENDIMENTO:**
+[Para cada técnico que participou, descreva suas ações:
+
+**Técnico [Nome do Técnico 1]:**
+* Ações realizadas e **verificações** feitas.
+* Diagnósticos e **hipóteses** levantadas.
+* Tentativas de solução aplicadas.
+* Status ao finalizar sua participação.
+
+**Técnico [Nome do Técnico 2]:**
+* Continuação do atendimento e **novas verificações**.
+* Ajustes ou correções aplicadas.
+* ...
+
+*Continue para todos os técnicos envolvidos*]
+
+**SOLUÇÃO FINAL:**
+[Status atual do ticket:
+* **Ação resolutiva definitiva** aplicada (se houver).
+* Confirmação do cliente sobre a resolução.
+* **Próximos passos** ou pendências (se aplicável).
+* Declare **"Ticket Finalizado."** ou o status atual (ex: "Aguardando retorno do cliente", "Escalado para equipe X").]
+
+O resumo gerado deve ser apenas o texto formatado.
