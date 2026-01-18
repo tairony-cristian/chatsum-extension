@@ -12,6 +12,159 @@ let DEBUG_MODE = false;
  * Cada plataforma tem seletores específicos para mensagens e técnicos
  */
 const PLATAFORMAS = {
+  // ============================================
+  // MOVIDESK - Suporte Específico e Otimizado
+  // ============================================
+  movidesk: {
+    nome: 'Movidesk',
+    detectar: () => {
+      // Detecta por URL ou elementos específicos do Movidesk
+      return window.location.hostname.includes('movidesk.com') ||
+             document.querySelector('li.tab-li.active') !== null;
+    },
+    // ⭐ FUNÇÃO ESPECIAL PARA MOVIDESK (não usa a genérica)
+    capturar: async function() {
+      try {
+        log('🔍 Iniciando captura específica do Movidesk...');
+        
+        // ETAPA 1: Clicar em "Carregar mais" (aguarda todas as mensagens)
+        await this.clicarEmCarregarMais();
+        
+        // ETAPA 2: Validar aba ativa
+        const abaAtiva = document.querySelector("li.tab-li.active");
+        if (!abaAtiva) {
+          throw new Error('Aba ativa não encontrada. Certifique-se de estar em uma conversa.');
+        }
+        
+        log(`✅ Aba ativa encontrada: ${abaAtiva.id}`);
+        
+        // ETAPA 3: Obter conteúdo da aba ativa
+        const idAba = abaAtiva.id;
+        const idConteudo = idAba.replace("tab", "tab-pane");
+        const divConteudo = document.querySelector(`#${idConteudo}`);
+        
+        if (!divConteudo) {
+          throw new Error('Conteúdo do chat não encontrado na aba ativa.');
+        }
+        
+        // ETAPA 4: Extrair mensagens
+        const containers = divConteudo.querySelectorAll(
+          ".message-container.sended, .message-container.received, .message-container.systemMessage"
+        );
+        
+        if (containers.length === 0) {
+          throw new Error('Nenhuma mensagem encontrada na aba ativa.');
+        }
+        
+        log(`📨 ${containers.length} mensagens encontradas`);
+        
+        // ETAPA 5: Processar mensagens e identificar técnicos
+        const mensagens = [];
+        const tecnicosChat = [];
+        
+        containers.forEach((container, index) => {
+          const nome = container.querySelector(".user")?.innerText?.trim() || "Sistema";
+          const hora = container.querySelector(".time")?.innerText?.trim() || "??:??";
+          
+          const conteudosMensagem = Array.from(container.querySelectorAll("span.message"))
+            .map(el => el.innerText?.trim())
+            .filter(msg => msg && msg.length > 0);
+          
+          if (conteudosMensagem.length === 0) return; // Skip se vazio
+          
+          const conteudoCompleto = conteudosMensagem.join("\n");
+          
+          // Identifica técnicos que "entraram na conversa"
+          if (/entrou na conversa/i.test(conteudoCompleto) && nome && nome !== "Sistema") {
+            tecnicosChat.push(nome);
+            log(`👤 Técnico detectado: ${nome}`);
+          }
+          
+          // Armazena mensagem estruturada
+          mensagens.push({
+            autor: nome,
+            conteudo: conteudoCompleto,
+            hora: hora,
+            timestamp: new Date().toISOString()
+          });
+        });
+        
+        // ETAPA 6: Formatar resultado
+        const ultimoTecnico = tecnicosChat.length > 0 
+          ? tecnicosChat[tecnicosChat.length - 1]
+          : "";
+        
+        const chatFormatado = mensagens
+          .map(msg => `[${msg.hora}] ${msg.autor}:\n${msg.conteudo}`)
+          .join("\n\n");
+        
+        log('✅ Captura Movidesk concluída com sucesso');
+        log(`📊 Estatísticas: ${mensagens.length} mensagens, ${chatFormatado.length} caracteres`);
+        
+        return {
+          success: true,
+          chat: chatFormatado,
+          ultimoTecnico: ultimoTecnico,
+          metadata: {
+            plataforma: this.nome,
+            totalMensagens: mensagens.length,
+            tamanhoBytes: new Blob([chatFormatado]).size,
+            timestamp: new Date().toISOString()
+          }
+        };
+        
+      } catch (erro) {
+        log(`❌ Erro na captura Movidesk: ${erro.message}`);
+        throw erro;
+      }
+    },
+    
+    // ⭐ FUNÇÃO AUXILIAR: Clicar em "Carregar mais"
+    clicarEmCarregarMais: async function() {
+      return new Promise((resolve) => {
+        let tentativas = 0;
+        const intervalo = setInterval(() => {
+          tentativas++;
+          
+          // Timeout após 20 tentativas (~10 segundos)
+          if (tentativas > 20) {
+            log("⏳ Botão 'Carregar mais' não encontrado (timeout).");
+            clearInterval(intervalo);
+            resolve();
+            return;
+          }
+          
+          // Busca o botão "Carregar mais"
+          const xpath = "//button[contains(text(), 'Carregar mais')]";
+          const botao = document.evaluate(
+            xpath,
+            document,
+            null,
+            XPathResult.FIRST_ORDERED_NODE_TYPE,
+            null
+          ).singleNodeValue;
+          
+          // Verifica se botão existe e está visível
+          if (botao && botao.offsetParent !== null) {
+            log("🔘 Botão 'Carregar mais' encontrado, clicando...");
+            botao.click();
+            clearInterval(intervalo);
+            
+            // Aguarda carregamento das mensagens (2 segundos)
+            setTimeout(() => {
+              log("✅ Mensagens carregadas após clique.");
+              resolve();
+            }, 2000);
+          }
+        }, 500);
+      });
+    }
+  },
+  
+  // ============================================
+  // OUTRAS PLATAFORMAS - Modo Genérico
+  // ============================================
+  
   // Genérico (tenta detectar estruturas comuns)
   generico: {
     nome: 'Chat Genérico',
@@ -121,16 +274,25 @@ const PLATAFORMAS = {
 
 /**
  * Detecta qual plataforma está sendo usada
+ * ⭐ MUDANÇA: Detecta Movidesk com PRIORIDADE
  * @returns {Object} Objeto da plataforma detectada
  */
 function detectarPlataforma() {
+  // PRIORIDADE 1: Movidesk (mais específico)
+  if (PLATAFORMAS.movidesk.detectar()) {
+    log(`✅ Plataforma detectada: ${PLATAFORMAS.movidesk.nome}`);
+    return PLATAFORMAS.movidesk;
+  }
+  
+  // PRIORIDADE 2: Outras plataformas
   for (const [key, plataforma] of Object.entries(PLATAFORMAS)) {
-    if (key !== 'generico' && plataforma.detectar()) {
+    if (key !== 'generico' && key !== 'movidesk' && plataforma.detectar()) {
       log(`✅ Plataforma detectada: ${plataforma.nome}`);
       return plataforma;
     }
   }
   
+  // FALLBACK: Modo genérico
   log('⚠️ Plataforma não reconhecida, usando modo genérico');
   return PLATAFORMAS.generico;
 }
@@ -175,7 +337,7 @@ function extrairTexto(elemento) {
 }
 
 /**
- * Identifica o último técnico que participou
+ * Identifica o último técnico que participou (para plataformas genéricas)
  * @param {Array} mensagens - Array de objetos de mensagem
  * @returns {string} Nome do último técnico
  */
@@ -200,14 +362,24 @@ function identificarUltimoTecnico(mensagens) {
 
 /**
  * Captura mensagens da plataforma detectada
+ * ⭐ MUDANÇA: Agora chama a função específica de cada plataforma
  * @returns {Object} Resultado com chat e metadados
  */
-function capturarChat() {
+async function capturarChat() {
   try {
     log('🔍 Iniciando captura do chat...');
     
     // Detecta plataforma
     const plataforma = detectarPlataforma();
+    
+    // ⭐ MUDANÇA: Se a plataforma tem função "capturar" própria (como Movidesk), usa ela
+    if (plataforma.capturar && typeof plataforma.capturar === 'function') {
+      log(`📋 Usando método de captura específico para ${plataforma.nome}`);
+      return await plataforma.capturar();
+    }
+    
+    // ⭐ FALLBACK: Usa método genérico para outras plataformas
+    log('📋 Usando método de captura genérico');
     
     // Busca mensagens
     const elementosMensagens = buscarComSeletores(plataforma.seletores.mensagens);
@@ -299,16 +471,17 @@ function log(mensagem) {
 
 /**
  * Listener de mensagens da extensão
+ * ⭐ MUDANÇA: Agora suporta funções assíncronas
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   log('📬 Mensagem recebida do popup');
   
   if (request.action === 'coletarChat') {
-    // Captura o chat
-    const resultado = capturarChat();
-    
-    // Envia resposta
-    sendResponse(resultado);
+    // ⭐ MUDANÇA: Agora é assíncrono
+    (async () => {
+      const resultado = await capturarChat();
+      sendResponse(resultado);
+    })();
     
     return true; // Mantém canal aberto para resposta assíncrona
   }

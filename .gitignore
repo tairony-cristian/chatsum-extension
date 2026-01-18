@@ -1,0 +1,46 @@
+# Variáveis de ambiente
+.env
+*.env
+!.env.example
+
+# Dados sensíveis
+*.key
+*.pem
+credentials.json
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.so
+.pytest_cache/
+
+# Node/NPM (se usar)
+node_modules/
+package-lock.json
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Build
+dist/
+build/
+*.crx
+*.zip
+
+# Temporários
+tmp/
+temp/
+*.tmp

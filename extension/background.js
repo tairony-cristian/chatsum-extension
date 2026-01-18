@@ -1,7 +1,5 @@
 import { ESTADOS, setEstado, obterEstado } from './utils/states.js';
 import { liberarLock } from './utils/lock.js';
-import { ESTADOS, setEstado, obterEstado } from './utils/states.js';
-import { liberarLock } from './utils/lock.js';
 import { StorageHelper } from './utils/storage.js';
 import { URLS, LIMITES, NOTIFICACOES } from './utils/constants.js';
 
