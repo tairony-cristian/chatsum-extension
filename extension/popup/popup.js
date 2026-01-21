@@ -14,6 +14,14 @@ const resultadoPre = document.getElementById('resultado');
 const contadorDiv = document.getElementById('contador');
 
 // ============================================
+// ESTADO GLOBAL DO POPUP
+// ============================================
+
+let resumoAtualEmProcessamento = null;  // Rastreia resumo em processamento
+let ultimoResumoTimestamp = null;       // Timestamp para comparação
+
+
+// ============================================
 // FUNÇÕES AUXILIARES
 // ============================================
 
@@ -161,6 +169,17 @@ btnCapturar.addEventListener('click', async () => {
                 console.log('[ChatSum] Chat capturado:', response.chat.length, 'caracteres');
                 setStatus('✅ Chat capturado! Enviando para IA...', 'ok');
                 
+                // Salvar chat em progresso IMEDIATAMENTE
+                // Assim, mesmo se popup fechar, há backup do chat
+                await chrome.storage.local.set({
+                    chatEmProcessamento: response.chat,
+                    ultimoTecnicoEmProcessamento: response.ultimoTecnico || '',
+                    modoEmProcessamento: modo,
+                    timestampProcessamento: new Date().toISOString()
+                });
+                console.log('[ChatSum] Chat salvo em progresso (backup)');
+
+
                 try {
                     console.log('[ChatSum] Enviando para servidor com modo:', modo);
                     
@@ -205,13 +224,28 @@ btnCapturar.addEventListener('click', async () => {
                         setStatus('✅ Resumo gerado com sucesso!', 'ok');
                         
                         await incrementarContador();
+
+
                         
-                        // Salva AMBOS: HTML formatado E markdown original
+                        // Salvar resumo COMPLETO (não em progresso)
+                        const agora = new Date().toISOString();
                         await chrome.storage.local.set({
-                            ultimoResumo: htmlFormatado,          // Para exibição
-                            ultimoResumoOriginal: result.resumo,  // Para copiar (NOVO!)
-                            timestampResumo: result.timestamp || new Date().toISOString()
+                            ultimoResumo: htmlFormatado,              // Versão HTML para exibição
+                            ultimoResumoOriginal: result.resumo,      // Versão markdown para copiar
+                            timestampResumo: result.timestamp || agora, // Data do resumo
+                            ultimoTecnico: result.ultimoTecnico || response.ultimoTecnico || '',
+                            modoResumo: modo,
+                            // Limpar backups em progresso após sucesso
+                            chatEmProcessamento: null,
+                            ultimoTecnicoEmProcessamento: null,
+                            modoEmProcessamento: null,
+                            timestampProcessamento: null
                         });
+                        
+                        // Rastrear timestamp para validação
+                        ultimoResumoTimestamp = result.timestamp || agora;
+                        
+                        console.log('[ChatSum] Resumo salvo com sucesso no storage');
                         
                     } else {
                         setStatus('❌ Resumo vazio', 'erro');
@@ -274,6 +308,12 @@ btnCopiar.addEventListener('click', async () => {
         
         await navigator.clipboard.write([clipboardItem]);
         
+        // Marcar como copiado no storage
+        // Assim pode validar se foi copiado ou não
+        await chrome.storage.local.set({
+            ultimoResumoCopiadoEm: new Date().toISOString()
+        });
+        
         setStatus('📋 Resumo copiado!', 'ok');
         setTimeout(() => setStatus('', 'info'), 2000);
         
@@ -322,15 +362,89 @@ btnApagar.addEventListener('click', async () => {
     await carregarModoResumo();
     await atualizarContador();
     
-    const { ultimoResumo } = await chrome.storage.local.get('ultimoResumo');
+    // Primeiro, tenta carregar resumo principal
+    const dados = await chrome.storage.local.get([
+        'ultimoResumo',
+        'ultimoResumoOriginal',
+        'timestampResumo',
+        'chatEmProcessamento',
+        'ultimoTecnicoEmProcessamento',
+        'modoEmProcessamento',
+        'timestampProcessamento'
+    ]);
     
-    if (ultimoResumo) {
-        resultadoPre.innerHTML = ultimoResumo;
+    console.log('[ChatSum] Dados recuperados do storage:', {
+        temResumo: !!dados.ultimoResumo,
+        temBackupChat: !!dados.chatEmProcessamento,
+        temTimestamp: !!dados.timestampResumo
+    });
+    
+    // PRIORIDADE 1: Se tem resumo completo, usar
+    if (dados.ultimoResumo) {
+        console.log('[ChatSum] Carregando resumo principal');
+        resultadoPre.innerHTML = dados.ultimoResumo;
         btnCapturar.style.display = 'none';
         btnCopiar.style.display = 'inline-block';
         btnApagar.style.display = 'inline-block';
-        setStatus('Último resumo carregado', 'info');
-    } else {
+        setStatus('✅ Último resumo carregado', 'ok');
+        ultimoResumoTimestamp = dados.timestampResumo;
+    } 
+    //  PRIORIDADE 2: Se tem backup de chat em processamento, recuperar e avisar
+    else if (dados.chatEmProcessamento) {
+        console.log('[ChatSum] Recuperando chat em processamento (fallback)');
+        resultadoPre.innerHTML = `
+            <div style="padding: 15px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; color: #856404;">
+                <strong>⚠️ Processamento Interrompido</strong><br><br>
+                Seu chat foi capturado e está sendo processado pelo servidor.
+                <br><br>
+                <strong>O que fazer:</strong>
+                <ol>
+                    <li>Aguarde alguns segundos</li>
+                    <li>Feche e reabra a extensão</li>
+                    <li>O resumo deve aparecer quando pronto</li>
+                </ol>
+                <br>
+                <small>Se não aparecer em 1 minuto, tente novamente.</small>
+            </div>
+        `;
+        btnCapturar.style.display = 'inline-block';
+        btnCopiar.style.display = 'none';
+        btnApagar.style.display = 'none';
+        setStatus('⏳ Aguardando resultado do servidor...', 'info');
+        
+        // Tentar recuperar resumo do servidor automaticamente após 5 segundos
+        setTimeout(async () => {
+            console.log('[ChatSum] Tentando recuperar resumo do servidor...');
+            try {
+                const response = await fetch('http://localhost:8000/resumidor/ultimo-resumo');
+                if (response.ok) {
+                    const result = await response.json();
+                    const htmlFormatado = formatarResumo(result.resumo);
+                    resultadoPre.innerHTML = htmlFormatado;
+                    btnCapturar.style.display = 'none';
+                    btnCopiar.style.display = 'inline-block';
+                    btnApagar.style.display = 'inline-block';
+                    setStatus('✅ Resumo recuperado do servidor!', 'ok');
+                    
+                    // Salvar no storage
+                    await chrome.storage.local.set({
+                        ultimoResumo: htmlFormatado,
+                        ultimoResumoOriginal: result.resumo,
+                        timestampResumo: result.timestamp,
+                        chatEmProcessamento: null,
+                        ultimoTecnicoEmProcessamento: null,
+                        modoEmProcessamento: null,
+                        timestampProcessamento: null
+                    });
+                }
+            } catch (err) {
+                console.error('[ChatSum] Não conseguiu recuperar do servidor:', err);
+            }
+        }, 5000);
+    } 
+    // PRIORIDADE 3: Nada salvo, esperar novo resumo
+    else {
+        console.log('[ChatSum] Nenhum resumo encontrado, aguardando ação');
         setStatus('Aguardando ação...', 'info');
     }
     
