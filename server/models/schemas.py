@@ -3,7 +3,7 @@ Modelos Pydantic para validação de dados
 Garante tipos corretos e validações automáticas
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ConfigDict, validator
 from typing import Optional, Literal
 from datetime import datetime
 
@@ -56,8 +56,8 @@ class ResumoResponse(BaseModel):
     ultimoTecnico: str = Field(..., description="Técnico que atendeu")
     modo: str = Field(..., description="Modo usado para gerar")
     
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "resumo": "**PROBLEMA:** Cliente reportou erro ao...",
                 "timestamp": "2025-01-14T10:30:00",
@@ -65,6 +65,7 @@ class ResumoResponse(BaseModel):
                 "modo": "ultimo_tecnico"
             }
         }
+    )
 
 
 class ErrorResponse(BaseModel):

@@ -9,6 +9,9 @@ from fastapi.responses import JSONResponse
 from datetime import datetime
 import logging
 from typing import Optional
+import sys
+import os
+from contextlib import asynccontextmanager
 
 # Importações locais
 from config.settings import settings
@@ -22,36 +25,58 @@ from services.ai_service import AIService, QuotaExceededError
 from services.sanitizer import DataSanitizer
 from prompts.prompt_manager import PromptManager
 
-# Configuração de logging
+# ============================================
+# CONFIGURAÇÃO DE ENCODING (Windows Fix)
+# ============================================
+
+if sys.platform == 'win32':
+    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    import io
+    
+    # Configura stdout e stderr
+    sys.stdout = io.TextIOWrapper(
+        sys.stdout.buffer, 
+        encoding='utf-8',
+        line_buffering=True
+    )
+    sys.stderr = io.TextIOWrapper(
+        sys.stderr.buffer, 
+        encoding='utf-8',
+        line_buffering=True
+    )
+
+# ============================================
+# CONFIGURAÇÃO DE LOGGING
+# ============================================
+
+# Cria handler para arquivo com encoding UTF-8
+file_handler = logging.FileHandler(
+    settings.LOG_FILE,
+    encoding='utf-8'
+)
+
+# Cria handler para console com encoding UTF-8
+stream_handler = logging.StreamHandler(sys.stdout)
+stream_handler.setLevel(getattr(logging, settings.LOG_LEVEL))
+
+# Configura formatação
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+file_handler.setFormatter(formatter)
+stream_handler.setFormatter(formatter)
+
+# Configura logger root
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(settings.LOG_FILE),
-        logging.StreamHandler()
-    ]
+    handlers=[file_handler, stream_handler]
 )
 logger = logging.getLogger(__name__)
 
-# Inicializa FastAPI
-app = FastAPI(
-    title="ChatSum API",
-    description="API para geração de resumos de atendimentos usando IA",
-    version="2.0.0",
-    docs_url="/docs",  # Swagger UI
-    redoc_url="/redoc"  # ReDoc
-)
+# ============================================
+# INICIALIZAÇÃO DO SERVIÇO DE IA (UMA VEZ!)
+# ============================================
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Inicializa serviço de IA
 try:
     ai_service = AIService()
     logger.info("🚀 Serviço de IA inicializado com sucesso")
@@ -62,23 +87,54 @@ except Exception as e:
 # Cache do último resumo gerado
 ultimo_resumo_cache: Optional[dict] = None
 
+# ============================================
+# LIFESPAN (Startup/Shutdown)
+# ============================================
 
-@app.on_event("startup")
-async def startup_event():
-    """Evento de inicialização do servidor"""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Gerencia startup e shutdown da aplicação"""
+    # STARTUP
     logger.info("=" * 60)
     logger.info("🚀 ChatSum API v2.0.0 - Iniciando...")
     logger.info(f"📡 Servidor: {settings.SERVER_HOST}:{settings.SERVER_PORT}")
     logger.info(f"🤖 Modelo IA: {ai_service.get_model_name()}")
     logger.info(f"📊 Rate Limit: {settings.MAX_REQUESTS_PER_DAY} req/dia")
     logger.info("=" * 60)
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Evento de encerramento do servidor"""
+    
+    yield  # Aplicação roda aqui
+    
+    # SHUTDOWN
     logger.info("👋 ChatSum API - Encerrando...")
 
+# ============================================
+# INICIALIZAÇÃO DO FASTAPI
+# ============================================
+
+app = FastAPI(
+    title="ChatSum API",
+    description="API para geração de resumos de atendimentos usando IA",
+    version="2.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan
+)
+
+# ============================================
+# MIDDLEWARE CORS
+# ============================================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ============================================
+# ENDPOINTS
+# ============================================
 
 @app.get("/", response_model=dict)
 async def root():
@@ -207,7 +263,7 @@ async def gerar_resumo(request: ResumoRequest):
         )
         
         # 6. Armazena em cache
-        ultimo_resumo_cache = resposta.dict()
+        ultimo_resumo_cache = resposta.model_dump()
         
         logger.info(f"✅ Resumo gerado com sucesso ({len(resumo)} chars)")
         
@@ -250,34 +306,6 @@ async def obter_ultimo_resumo():
     logger.info("📤 Último resumo recuperado do cache")
     return ResumoResponse(**ultimo_resumo_cache)
 
-
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    """Handler global de exceções não tratadas"""
-    logger.error(f"❌ Exceção não tratada: {exc}", exc_info=True)
-    
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "Erro interno do servidor",
-            "detail": str(exc) if settings.LOG_LEVEL == "DEBUG" else "Erro inesperado",
-            "timestamp": datetime.now().isoformat()
-        }
-    )
-
-
-if __name__ == "__main__":
-    import uvicorn
-    
-    uvicorn.run(
-        app,
-        host=settings.SERVER_HOST,
-        port=settings.SERVER_PORT,
-        log_level=settings.LOG_LEVEL.lower(),
-        reload=False  # Desabilitar em produção
-    )
-
-    # server/main.py (ADICIONAR estes endpoints)
 
 @app.get("/resumidor/prompt-default", response_model=dict)
 async def obter_prompt_default():
@@ -334,3 +362,34 @@ async def validar_prompt_custom(request: Request):
         "erro": erro,
         "tamanho": len(prompt) if prompt else 0
     }
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Handler global de exceções não tratadas"""
+    logger.error(f"❌ Exceção não tratada: {exc}", exc_info=True)
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Erro interno do servidor",
+            "detail": str(exc) if settings.LOG_LEVEL == "DEBUG" else "Erro inesperado",
+            "timestamp": datetime.now().isoformat()
+        }
+    )
+
+# ============================================
+# EXECUÇÃO
+# ============================================
+
+if __name__ == "__main__":
+    import uvicorn
+    
+    uvicorn.run(
+        app,
+        host=settings.SERVER_HOST,
+        port=settings.SERVER_PORT,
+        log_level=settings.LOG_LEVEL.lower(),
+        reload=False,
+        access_log=True
+    )
