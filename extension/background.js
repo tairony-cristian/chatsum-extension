@@ -54,6 +54,7 @@ async function processarResumo() {
       'ultimoTecnico',
       'tabIdProcessando',
       'modoResumo',
+      'promptAtivo',
       'promptPersonalizado',
       'usarPromptPersonalizado'
     ]);
@@ -69,8 +70,10 @@ async function processarResumo() {
       texto: data.chatCapturado,
       ultimoTecnico: data.ultimoTecnico || '',
       modo: data.modoResumo || 'ultimo_tecnico',
-      promptCustom: data.usarPromptPersonalizado ? data.promptPersonalizado : null
     };
+    if (data.promptAtivo === 'custom' && data.promptPersonalizado) {
+    payload.promptCustom = data.promptPersonalizado;
+    }
     
     console.log('[Background] Enviando para servidor...', {
       tamanhoChat: payload.texto.length,

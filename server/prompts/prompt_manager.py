@@ -135,8 +135,4 @@ O resumo gerado deve ser apenas o texto formatado.
         if len(prompt) > 5000:
             return False, "Prompt muito longo (máximo 5000 caracteres)"
         
-        # Verifica se tem placeholder para variáveis
-        if '{ultimo_tecnico}' not in prompt:
-            return False, "Prompt deve conter a variável {ultimo_tecnico}"
-        
         return True, None

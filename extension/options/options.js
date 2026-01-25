@@ -244,10 +244,6 @@ function validarPrompt() {
     erros.push('Prompt muito longo (máximo 5000 caracteres)');
   }
   
-  if (!prompt.includes('{ultimo_tecnico}')) {
-    erros.push('Prompt deve conter a variável {ultimo_tecnico}');
-  }
-  
   // Mostra resultado
   if (erros.length > 0) {
     promptStatus.innerHTML = `
@@ -290,11 +286,8 @@ async function salvarPrompt() {
     });
     
     mostrarToast('✅ Prompt salvo com sucesso!', 'success');
-    promptStatus.innerHTML = '';
-    
   } catch (erro) {
-    console.error('Erro ao salvar prompt:', erro);
-    mostrarToast('❌ Erro ao salvar prompt', 'error');
+       mostrarToast('❌ Erro ao salvar prompt', 'error');
   }
 }
 
@@ -313,11 +306,7 @@ function validarPromptCustom(prompt) {
   if (prompt.length > 5000) {
     return [false, 'Prompt muito longo (máximo 5000 caracteres)'];
   }
-  
-  if (!prompt.includes('{ultimo_tecnico}')) {
-    return [false, 'Prompt deve conter {ultimo_tecnico}'];
-  }
-  
+ 
   return [true, null];
 }
 

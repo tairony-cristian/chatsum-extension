@@ -6,6 +6,8 @@ import httpx
 from typing import Optional
 import logging
 from config.settings import settings
+from datetime import datetime
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,29 @@ class AIService:
         self.model_name = self.modelos[0]  # Usa o primeiro como padrão
         
         logger.info(f"[OK] Modelo configurado: {self.model_name}")
+
+    def _interpolar_prompt(self, prompt_template: str, ultimo_tecnico: str = "", texto: str = "") -> str:
+        """
+        Interpola variáveis no prompt de forma segura
+        Aceita variáveis opcionais: {ultimo_tecnico}, {texto}, {data}, {hora}
+        """
+        variaveis = {
+            'ultimo_tecnico': ultimo_tecnico or "o último técnico",
+            'texto': texto,
+            'data': datetime.now().strftime("%d/%m/%Y"),
+            'hora': datetime.now().strftime("%H:%M"),
+        }
+        
+        # Encontra APENAS as variáveis que existem no template
+        resultado = prompt_template
+        pattern = r'\{(\w+)\}'
+        matches = re.findall(pattern, prompt_template)
+        
+        for match in matches:
+            if match in variaveis:
+                resultado = resultado.replace(f'{{{match}}}', str(variaveis[match]))
+        
+        return resultado
     
     def generate_summary(
         self,
@@ -49,9 +74,11 @@ class AIService:
             TimeoutError: Se exceder timeout
         """
         # Formata prompt final
-        prompt_personalizado = prompt_template.format(
-            ultimo_tecnico=ultimo_tecnico or "o último técnico"
-        )
+        prompt_personalizado = self._interpolar_prompt(
+            prompt_template,
+            ultimo_tecnico=ultimo_tecnico,
+            texto=texto
+)
         prompt_final = f"{prompt_personalizado}\n\n=== HISTÓRICO DO CHAT ===\n{texto}"
         
         # Tenta cada modelo na lista

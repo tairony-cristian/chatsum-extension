@@ -181,16 +181,26 @@ btnCapturar.addEventListener('click', async () => {
 
 
                 try {
-                    console.log('[ChatSum] Enviando para servidor com modo:', modo);
-                    
+                    const config = await chrome.storage.local.get([
+                        'promptAtivo',
+                        'promptPersonalizado'
+                    ]);
+
+                    const payloadResumo = {
+                        texto: response.chat,
+                        ultimoTecnico: response.ultimoTecnico || '',
+                        modo: modo
+                    };
+
+                    // ✅ Adiciona prompt custom SE selecionado
+                    if (config.promptAtivo === 'custom' && config.promptPersonalizado) {
+                        payloadResumo.promptCustom = config.promptPersonalizado;
+                    }
+
                     const serverResponse = await fetch('http://localhost:8000/resumidor/resumir', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            texto: response.chat,
-                            ultimoTecnico: response.ultimoTecnico || '',
-                            modo: modo
-                        })
+                        body: JSON.stringify(payloadResumo)
                     });
                     
                     console.log('[ChatSum] Status servidor:', serverResponse.status);
