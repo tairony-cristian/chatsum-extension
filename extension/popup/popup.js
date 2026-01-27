@@ -17,9 +17,7 @@ const contadorDiv = document.getElementById('contador');
 // ESTADO GLOBAL DO POPUP
 // ============================================
 
-let resumoAtualEmProcessamento = null;  // Rastreia resumo em processamento
-let ultimoResumoTimestamp = null;       // Timestamp para comparação
-
+let ultimoResumoTimestamp = null;
 
 // ============================================
 // FUNÇÕES AUXILIARES
@@ -91,6 +89,80 @@ function formatarResumo(resumo) {
 async function carregarModoResumo() {
     const { modoResumo } = await chrome.storage.local.get('modoResumo');
     selectModo.value = modoResumo || 'ultimo_tecnico';
+}
+
+// ============================================
+// ✅ FUNÇÃO DE CÓPIA
+// ============================================
+/**
+ * Copia o resumo para clipboard em formato HTML e texto plano
+ * @param {string} statusMensagem - Mensagem a exibir após copiar
+ * @returns {Promise<boolean>} true se copiou com sucesso
+ */
+async function copiarResumoParaClipboard(statusMensagem = '📋 Resumo copiado!') {
+    try {
+        const htmlContent = resultadoPre.innerHTML;
+        
+        if (!htmlContent) {
+            console.log('[ChatSum] Sem conteúdo para copiar');
+            return false;
+        }
+        
+        // Converte HTML para texto limpo (fallback)
+        const textoLimpo = htmlContent
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<b>(.*?)<\/b>/gi, '$1')
+            .replace(/<span[^>]*>(.*?)<\/span>/gi, '$1')
+            .replace(/<[^>]*>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .trim();
+        
+        // Prepara HTML completo com estilos inline
+        const htmlCompleto = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: Arial, sans-serif; font-size: 13px; color: #333; line-height: 1.6;">
+    ${htmlContent}
+</body>
+</html>
+        `.trim();
+        
+        // Copia nos dois formatos
+        const blob = new Blob([htmlCompleto], { type: 'text/html' });
+        const textBlob = new Blob([textoLimpo], { type: 'text/plain' });
+        
+        const clipboardItem = new ClipboardItem({
+            'text/html': blob,
+            'text/plain': textBlob
+        });
+        
+        await navigator.clipboard.write([clipboardItem]);
+        
+        console.log('[ChatSum] Resumo copiado para clipboard!');
+        return true;
+        
+    } catch (err) {
+        console.error('[ChatSum] Erro ao copiar:', err);
+        
+        // Fallback: copia apenas texto limpo
+        try {
+            const htmlContent = resultadoPre.innerHTML;
+            const textoLimpo = htmlContent
+                .replace(/<br\s*\/?>/gi, '\n')
+                .replace(/<[^>]*>/g, '')
+                .trim();
+            
+            await navigator.clipboard.writeText(textoLimpo);
+            console.log('[ChatSum] Resumo copiado (texto simples) para clipboard!');
+            return true;
+        } catch (fallbackErr) {
+            console.error('[ChatSum] Falha no fallback também:', fallbackErr);
+            return false;
+        }
+    }
 }
 
 // ============================================
@@ -179,11 +251,11 @@ btnCapturar.addEventListener('click', async () => {
                 });
                 console.log('[ChatSum] Chat salvo em progresso (backup)');
 
-
                 try {
                     const config = await chrome.storage.local.get([
                         'promptAtivo',
-                        'promptPersonalizado'
+                        'promptPersonalizado',
+                        'autoCopiar'
                     ]);
 
                     const payloadResumo = {
@@ -234,8 +306,6 @@ btnCapturar.addEventListener('click', async () => {
                         setStatus('✅ Resumo gerado com sucesso!', 'ok');
                         
                         await incrementarContador();
-
-
                         
                         // Salvar resumo COMPLETO (não em progresso)
                         const agora = new Date().toISOString();
@@ -256,6 +326,17 @@ btnCapturar.addEventListener('click', async () => {
                         ultimoResumoTimestamp = result.timestamp || agora;
                         
                         console.log('[ChatSum] Resumo salvo com sucesso no storage');
+
+                        // ✅ AUTO-COPIAR: Usar função única
+                        if (config.autoCopiar) {
+                            console.log('[ChatSum] Auto-copiar ativado, copiando resumo...');
+                            const sucesso = await copiarResumoParaClipboard('📋 Copiado automaticamente!');
+                            
+                            if (sucesso) {
+                                setStatus('📋 Copiado automaticamente!', 'ok');
+                                setTimeout(() => setStatus('✅ Resumo gerado com sucesso!', 'ok'), 2000);
+                            }
+                        }
                         
                     } else {
                         setStatus('❌ Resumo vazio', 'erro');
@@ -282,68 +363,14 @@ btnCapturar.addEventListener('click', async () => {
 // ============================================
 
 btnCopiar.addEventListener('click', async () => {
-    try {
-        const htmlContent = resultadoPre.innerHTML;
-        
-        // Converte HTML para texto limpo (fallback)
-        const textoLimpo = htmlContent
-            .replace(/<br\s*\/?>/gi, '\n')
-            .replace(/<b>(.*?)<\/b>/gi, '$1')
-            .replace(/<span[^>]*>(.*?)<\/span>/gi, '$1')
-            .replace(/<[^>]*>/g, '')
-            .replace(/&nbsp;/g, ' ')
-            .trim();
-        
-        // Prepara HTML completo com estilos inline
-        const htmlCompleto = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-</head>
-<body style="font-family: Arial, sans-serif; font-size: 13px; color: #333; line-height: 1.6;">
-    ${htmlContent}
-</body>
-</html>
-        `.trim();
-        
-        // Copia nos dois formatos
-        const blob = new Blob([htmlCompleto], { type: 'text/html' });
-        const textBlob = new Blob([textoLimpo], { type: 'text/plain' });
-        
-        const clipboardItem = new ClipboardItem({
-            'text/html': blob,
-            'text/plain': textBlob
-        });
-        
-        await navigator.clipboard.write([clipboardItem]);
-        
-        // Marcar como copiado no storage
-        // Assim pode validar se foi copiado ou não
-        await chrome.storage.local.set({
-            ultimoResumoCopiadoEm: new Date().toISOString()
-        });
-        
+    // ✅ Usar função única de cópia
+    const sucesso = await copiarResumoParaClipboard();
+    
+    if (sucesso) {
         setStatus('📋 Resumo copiado!', 'ok');
         setTimeout(() => setStatus('', 'info'), 2000);
-        
-    } catch (err) {
-        console.error('[ChatSum] Erro ao copiar:', err);
-        
-        // Fallback: copia apenas texto limpo
-        try {
-            const htmlContent = resultadoPre.innerHTML;
-            const textoLimpo = htmlContent
-                .replace(/<br\s*\/?>/gi, '\n')
-                .replace(/<[^>]*>/g, '')
-                .trim();
-            
-            await navigator.clipboard.writeText(textoLimpo);
-            setStatus('📋 Copiado (texto simples)', 'ok');
-            setTimeout(() => setStatus('', 'info'), 2000);
-        } catch (fallbackErr) {
-            setStatus('❌ Erro ao copiar', 'erro');
-        }
+    } else {
+        setStatus('❌ Erro ao copiar', 'erro');
     }
 });
 
