@@ -1,6 +1,22 @@
 """
 ChatSum API - Servidor de Resumos de Atendimento
 FastAPI backend para geração de resumos usando IA
+
+🚀 DEPLOYMENT NOTES:
+───────────────────
+Este arquivo foi otimizado para funcionar tanto localmente quanto no Railway.
+
+MODO LOCAL (Desenvolvimento):
+- Log Level: WARNING (economiza espaço)
+- Porta: 8000 (padrão)
+- Host: 127.0.0.1
+- Comando: python main.py
+
+MODO RAILWAY (Produção):
+- Log Level: WARNING (configurado no .env)
+- Porta: Lida de PORT do Procfile/ambiente
+- Host: 0.0.0.0 (Railway exige)
+- CORS: Habilitado para chrome-extension://
 """
 
 from fastapi import FastAPI, HTTPException, Request
@@ -49,7 +65,7 @@ if sys.platform == 'win32':
 # CONFIGURAÇÃO DE LOGGING
 # ============================================
 
-# Cria handler para arquivo com encoding UTF-8
+#  LOG LEVEL OTIMIZADO:
 file_handler = logging.FileHandler(
     settings.LOG_FILE,
     encoding='utf-8'
@@ -74,12 +90,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ============================================
-# INICIALIZAÇÃO DO SERVIÇO DE IA (UMA VEZ!)
+# INICIALIZAÇÃO DO SERVIÇO DE IA
 # ============================================
 
 try:
     ai_service = AIService()
-    logger.info("🚀 Serviço de IA inicializado com sucesso")
+    logger.warning(f"✓ Serviço de IA inicializado com sucesso")
 except Exception as e:
     logger.critical(f"❌ Falha crítica ao inicializar IA: {e}")
     raise
@@ -95,17 +111,17 @@ ultimo_resumo_cache: Optional[dict] = None
 async def lifespan(app: FastAPI):
     """Gerencia startup e shutdown da aplicação"""
     # STARTUP
-    logger.info("=" * 60)
-    logger.info("🚀 ChatSum API v2.0.0 - Iniciando...")
-    logger.info(f"📡 Servidor: {settings.SERVER_HOST}:{settings.SERVER_PORT}")
-    logger.info(f"🤖 Modelo IA: {ai_service.get_model_name()}")
-    logger.info(f"📊 Rate Limit: {settings.MAX_REQUESTS_PER_DAY} req/dia")
-    logger.info("=" * 60)
+    logger.warning("=" * 60)
+    logger.warning("🚀 ChatSum API v2.0.0 - Iniciando...")
+    logger.warning(f"🔡 Servidor: {settings.SERVER_HOST}:{settings.SERVER_PORT}")
+    logger.warning(f"🤖 Modelo IA: {ai_service.get_model_name()}")
+    logger.warning(f"📊 Rate Limit: {settings.MAX_REQUESTS_PER_DAY} req/dia")
+    logger.warning("=" * 60)
     
     yield  # Aplicação roda aqui
     
     # SHUTDOWN
-    logger.info("👋 ChatSum API - Encerrando...")
+    logger.warning("👋 ChatSum API - Encerrando...")
 
 # ============================================
 # INICIALIZAÇÃO DO FASTAPI
@@ -123,6 +139,10 @@ app = FastAPI(
 # ============================================
 # MIDDLEWARE CORS
 # ============================================
+
+# ⚠️ IMPORTANTE: CORS configurado apenas para extension Chrome
+# Não adicione localhost:3000 ou outros URLs de desenvolvimento aqui
+# Use modoDesenvolvedor no popup para testar localmente
 
 app.add_middleware(
     CORSMiddleware,
@@ -186,7 +206,7 @@ async def gerar_resumo(request: ResumoRequest):
     """
     global ultimo_resumo_cache
     
-    logger.info(f"📥 Nova requisição de resumo (modo: {request.modo})")
+    logger.warning(f"📥 Nova requisição de resumo (modo: {request.modo})")
     
     try:
         # 1. Sanitiza dados sensíveis
@@ -216,14 +236,14 @@ async def gerar_resumo(request: ResumoRequest):
                 raise HTTPException(status_code=400, detail=f"Prompt inválido: {erro}")
             
             prompt_template = request.promptCustom
-            logger.info("📝 Usando prompt personalizado")
+            logger.warning("📝 Usando prompt personalizado")
         else:
             # Usa prompt baseado no modo
             prompt_template = PromptManager.get_prompt_for_mode(request.modo)
-            logger.info(f"📝 Usando prompt padrão (modo: {request.modo})")
+            logger.warning(f"📝 Usando prompt padrão (modo: {request.modo})")
         
         # 4. Gera resumo com IA
-        logger.info(f"🤖 Gerando resumo ({len(texto_limpo)} chars)...")
+        logger.warning(f"🤖 Gerando resumo ({len(texto_limpo)} chars)...")
         
         try:
             resumo = ai_service.generate_summary(
@@ -239,14 +259,14 @@ async def gerar_resumo(request: ResumoRequest):
                 )
             
         except QuotaExceededError:
-            logger.error("❌ Quota da API excedida")
+            logger.warning("❌ Quota da API excedida")
             raise HTTPException(
                 status_code=429,
                 detail="Limite diário da API atingido. Tente novamente amanhã ou faça upgrade do plano."
             )
         
         except TimeoutError:
-            logger.error("❌ Timeout ao gerar resumo")
+            logger.warning("❌ Timeout ao gerar resumo")
             raise HTTPException(
                 status_code=504,
                 detail="Timeout ao gerar resumo. Tente novamente."
@@ -265,15 +285,15 @@ async def gerar_resumo(request: ResumoRequest):
         # 6. Armazena em cache
         ultimo_resumo_cache = resposta.model_dump()
         
-        logger.info(f"✅ Resumo gerado com sucesso ({len(resumo)} chars)")
+        logger.warning(f"✅ Resumo gerado com sucesso ({len(resumo)} chars)")
         
         return resposta
         
     except HTTPException:
-        raise  # Re-lança HTTPException
+        raise
         
     except Exception as e:
-        logger.error(f"❌ Erro inesperado: {e}", exc_info=True)
+        logger.warning(f"✅ Erro inesperado: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Erro interno ao processar resumo: {str(e)}"
@@ -303,18 +323,13 @@ async def obter_ultimo_resumo():
             detail="Nenhum resumo disponível"
         )
     
-    logger.info("📤 Último resumo recuperado do cache")
+    logger.warning("📤 Último resumo recuperado do cache")
     return ResumoResponse(**ultimo_resumo_cache)
 
 
 @app.get("/resumidor/prompt-default", response_model=dict)
 async def obter_prompt_default():
-    """
-    Retorna o prompt padrão do sistema
-    
-    Returns:
-        Prompt padrão em formato texto
-    """
+    """Retorna o prompt padrão do sistema"""
     prompt = PromptManager.get_default_prompt()
     
     return {
@@ -326,12 +341,7 @@ async def obter_prompt_default():
 
 @app.get("/resumidor/prompt-completo", response_model=dict)
 async def obter_prompt_completo():
-    """
-    Retorna o prompt para modo completo
-    
-    Returns:
-        Prompt do modo completo
-    """
+    """Retorna o prompt para modo completo"""
     prompt = PromptManager.get_prompt_completo()
     
     return {
@@ -343,15 +353,7 @@ async def obter_prompt_completo():
 
 @app.post("/resumidor/validar-prompt", response_model=dict)
 async def validar_prompt_custom(request: Request):
-    """
-    Valida um prompt personalizado
-    
-    Args:
-        request: JSON com campo 'prompt'
-        
-    Returns:
-        Resultado da validação
-    """
+    """Valida um prompt personalizado"""
     body = await request.json()
     prompt = body.get("prompt", "")
     
@@ -367,7 +369,7 @@ async def validar_prompt_custom(request: Request):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Handler global de exceções não tratadas"""
-    logger.error(f"❌ Exceção não tratada: {exc}", exc_info=True)
+    logger.warning(f"❌ Exceção não tratada: {exc}")
     
     return JSONResponse(
         status_code=500,
@@ -379,11 +381,28 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 # ============================================
-# EXECUÇÃO
+# EXECUÇÃO (DESENVOLVIMENTO LOCAL)
 # ============================================
+
+#  PARA DESENVOLVIMENTO LOCAL:
+#
+# Se desejar rodar este arquivo diretamente:
+#   python main.py
+#
+# O servidor iniciará em http://localhost:8000
+#
+#  PARA PRODUCTION (RAILWAY):
+#
+# O Railway usa o Procfile que contém:
+#   web: uvicorn main:app --host 0.0.0.0 --port $PORT
+#
+# Não execute diretamente em production!
 
 if __name__ == "__main__":
     import uvicorn
+    
+    #  DESENVOLVIMENTO APENAS
+    # Para production, use o comando no Procfile
     
     uvicorn.run(
         app,
@@ -391,5 +410,5 @@ if __name__ == "__main__":
         port=settings.SERVER_PORT,
         log_level=settings.LOG_LEVEL.lower(),
         reload=False,
-        access_log=True
+        access_log=False  # 🎯 Desabilitado para economizar logs
     )

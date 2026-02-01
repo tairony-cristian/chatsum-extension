@@ -23,6 +23,7 @@
     <!-- Tabs de Navegação -->
     <nav class="tabs">
       <button class="tab-btn active" data-tab="geral">⚙️ Geral</button>
+      <button class="tab-btn" data-tab="servidor">🌐 Servidor</button>
       <button class="tab-btn" data-tab="prompts">📝 Prompts</button>
       <button class="tab-btn" data-tab="avancado">🔧 Avançado</button>
       <button class="tab-btn" data-tab="sobre">ℹ️ Sobre</button>
@@ -55,21 +56,6 @@
           </div>
         </div>
 
-        <!-- URL do Servidor -->
-        <div class="setting-group">
-          <label class="setting-label">
-            <span class="label-text">🌐 URL do Servidor</span>
-            <span class="label-description">Endereço do servidor local (padrão: http://localhost:8000)</span>
-          </label>
-          <input 
-            type="text" 
-            id="serverUrl" 
-            class="input-text" 
-            placeholder="http://localhost:8000"
-            value="http://localhost:8000"
-          >
-        </div>
-
         <!-- Auto-copiar -->
         <div class="setting-group">
           <label class="setting-checkbox">
@@ -87,6 +73,72 @@
         </div>
 
         <button id="btnSalvarGeral" class="btn-primary">💾 Salvar Configurações</button>
+      </section>
+
+      <!-- 🌐 TAB: SERVIDOR (NOVO!) -->
+      <section id="tab-servidor" class="tab-content">
+        <h2>Configuração do Servidor</h2>
+        
+        <!-- ⚠️ INFO BOX -->
+        <div class="info-box warning">
+          <strong>⚠️ Importante!</strong><br>
+          Este painel controla como a extensão se conecta ao servidor ChatSum. 
+          Você pode alternar entre servidor local (desenvolvimento) e servidor remoto (produção).
+        </div>
+
+        <!-- 🔧 MODO DESENVOLVEDOR -->
+        <div class="setting-group highlight-dev">
+          <label class="setting-label">
+            <span class="label-text">🔧 Modo Desenvolvedor</span>
+            <span class="label-description">
+              Marque esta opção se está desenvolvendo localmente.
+              Ela ignora a URL abaixo e conecta em http://localhost:8000
+            </span>
+          </label>
+          <label class="setting-checkbox large">
+            <input type="checkbox" id="modoDesenvolvedor">
+            <span>Usar servidor local (http://localhost:8000)</span>
+          </label>
+          <small style="display: block; margin-top: 8px; color: #999;">
+            💡 Dica: Se marcado, a extensão conectará sempre em localhost:8000
+          </small>
+        </div>
+
+        <!-- 🌐 URL DO SERVIDOR REMOTO -->
+        <div class="setting-group">
+          <label class="setting-label">
+            <span class="label-text">🌐 URL do Servidor Remoto</span>
+            <span class="label-description">
+              Coloque a URL do seu servidor Railway aqui.
+              Exemplo: https://seu-projeto-railway.up.railway.app
+            </span>
+          </label>
+          <input 
+            type="text" 
+            id="serverUrl" 
+            class="input-text" 
+            placeholder="https://seu-projeto-railway.up.railway.app"
+          >
+          <small style="display: block; margin-top: 8px; color: #999;">
+            ℹ️ Esta URL só é usada quando o Modo Desenvolvedor está DESMARCADO
+          </small>
+        </div>
+
+        <!-- 📊 STATUS -->
+        <div class="setting-group status-box">
+          <strong>📊 Status da Conexão:</strong>
+          <div id="statusConexao" style="margin-top: 8px;">
+            <span style="color: #999;">Carregando...</span>
+          </div>
+        </div>
+
+        <!-- 🧪 TESTE DE CONEXÃO -->
+        <div class="setting-group">
+          <button id="btnTestarConexao" class="btn-secondary">🧪 Testar Conexão</button>
+          <div id="resultadoTeste" style="margin-top: 12px;"></div>
+        </div>
+
+        <button id="btnSalvarServidor" class="btn-primary">💾 Salvar Configurações</button>
       </section>
 
       <!-- TAB: Prompts -->
@@ -205,7 +257,7 @@
         <div class="setting-group">
           <label class="setting-checkbox">
             <input type="checkbox" id="debugMode">
-            <span>🐛 Modo Debug (mostra logs no console)</span>
+            <span>🛠️ Modo Debug (mostra logs no console)</span>
           </label>
         </div>
       </section>
@@ -258,6 +310,8 @@
               <li>🎨 Interface redesenhada</li>
               <li>⚡ Background processing</li>
               <li>🔒 Melhorias de segurança e sanitização</li>
+              <li>🔧 NOVO: Sistema dual-mode (localhost + Railway)</li>
+              <li>☑️ NOVO: Checkbox para alternar modo desenvolvedor</li>
             </ul>
           </div>
         </div>

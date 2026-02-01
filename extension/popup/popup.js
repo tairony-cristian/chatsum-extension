@@ -165,6 +165,24 @@ async function copiarResumoParaClipboard(statusMensagem = '📋 Resumo copiado!'
     }
 }
 
+async function obterServerUrl() {
+    try {
+        const config = await chrome.storage.local.get('serverUrl');
+        
+        if (config.serverUrl && config.serverUrl.trim()) {
+            console.log('[Servidor] Usando URL configurada:', config.serverUrl);
+            return config.serverUrl.trim();
+        }
+        
+        console.log('[Servidor] Usando localhost');
+        return 'http://localhost:8000';
+        
+    } catch (erro) {
+        console.error('[Servidor] Erro ao obter URL:', erro);
+        return 'http://localhost:8000';
+    }
+}
+
 // ============================================
 // EVENTO: MUDANÇA DE MODO
 // ============================================
@@ -183,6 +201,24 @@ selectModo.addEventListener('change', async () => {
 btnConfig.addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
 });
+
+async function obterServerUrl() {
+    try {
+        const config = await chrome.storage.local.get('serverUrl');
+        
+        if (config.serverUrl && config.serverUrl.trim()) {
+            console.log('[Servidor] Usando URL configurada:', config.serverUrl);
+            return config.serverUrl.trim();
+        }
+        
+        console.log('[Servidor] Usando localhost');
+        return 'http://localhost:8000';
+        
+    } catch (erro) {
+        console.error('[Servidor] Erro ao obter URL:', erro);
+        return 'http://localhost:8000';
+    }
+}
 
 // ============================================
 // EVENTO: CAPTURAR E RESUMIR
@@ -269,7 +305,8 @@ btnCapturar.addEventListener('click', async () => {
                         payloadResumo.promptCustom = config.promptPersonalizado;
                     }
 
-                    const serverResponse = await fetch('http://localhost:8000/resumidor/resumir', {
+                    const serverUrl = await obterServerUrl();
+                    const serverResponse = await fetch(`${serverUrl}/resumidor/resumir`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payloadResumo)
@@ -453,7 +490,8 @@ btnApagar.addEventListener('click', async () => {
         setTimeout(async () => {
             console.log('[ChatSum] Tentando recuperar resumo do servidor...');
             try {
-                const response = await fetch('http://localhost:8000/resumidor/ultimo-resumo');
+                const serverUrl = await obterServerUrl();
+                const response = await fetch(`${serverUrl}/resumidor/ultimo-resumo`);
                 if (response.ok) {
                     const result = await response.json();
                     const htmlFormatado = formatarResumo(result.resumo);

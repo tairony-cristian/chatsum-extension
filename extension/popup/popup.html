@@ -165,6 +165,93 @@
       margin-bottom: 5px;
       display: block;
     }
+
+    /* Estilos para aviso de configuração */
+    .warning-banner {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .warning-banner.show {
+      display: block;
+    }
+
+    .warning-banner strong {
+      color: #856404;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .warning-banner p {
+      color: #856404;
+      font-size: 12px;
+      margin: 0 0 8px 0;
+      line-height: 1.4;
+    }
+
+    .warning-banner button {
+      background: #ffc107;
+      color: #856404;
+      font-weight: bold;
+      padding: 6px 12px;
+      margin: 0;
+      width: auto;
+      font-size: 12px;
+    }
+
+    .warning-banner button:hover {
+      background: #ffb300;
+    }
+
+    /* Estilos para seletor de servidor */
+    .server-selector {
+      background: #f0f0f0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .server-selector.show {
+      display: block;
+    }
+
+    .server-info {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .server-info strong {
+      color: #333;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .dev-mode-indicator {
+      background: #e3f2fd;
+      border-left: 3px solid #1565c0;
+      padding: 8px;
+      border-radius: 2px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .dev-mode-indicator.show {
+      display: block;
+    }
+
+    .dev-mode-indicator p {
+      font-size: 12px;
+      color: #1565c0;
+      margin: 0;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -173,7 +260,27 @@
     <span class="settings-icon" id="abrirConfig" title="Configurações">⚙️</span>
   </div>
 
-  <div id="contador">📊 Requisições hoje: 0</div>
+  <!-- Aviso de configuração necessária -->
+<div id="warningBanner" class="warning-banner">
+  <strong>⚠️ Configuração Necessária</strong>
+  <p>A URL do servidor não está configurada. Clique em "Configurar Agora" para acessar as configurações.</p>
+  <button id="btnConfigurarAgora" style="background: #ffc107; color: #856404;">Configurar Agora</button>
+</div>
+
+  <!-- Indicador de modo desenvolvedor ativo -->
+<div id="devModeIndicator" class="dev-mode-indicator">
+  <p>Modo Desenvolvedor Ativo (localhost:8000)</p>
+</div>
+
+  <!-- Seletor de servidor -->
+  <div id="serverSelector" class="server-selector">
+    <div class="server-info">
+      <strong>Servidor em Uso:</strong>
+      <span id="serverAtual">Não configurado</span>
+    </div>
+  </div>
+
+  <div id="contador">🔢 Requisições hoje: 0</div>
 
   <label class="label" for="modoResumo">Modo de Resumo:</label>
   <select id="modoResumo">

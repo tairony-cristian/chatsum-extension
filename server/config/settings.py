@@ -1,6 +1,11 @@
 """
 Configurações do servidor - Carrega variáveis do .env
 Nunca exponha dados sensíveis diretamente no código!
+
+DEPLOYMENT NOTES:
+- Em Railway: PORT é lido automaticamente, usa 0.0.0.0
+- Em Local: usa 127.0.0.1:8000
+- SERVER_HOST: 0.0.0.0 é universal (funciona em Railway e Local)
 """
 
 import os
@@ -19,9 +24,8 @@ class Settings:
     # API Keys (NUNCA commitar!)
     GEMINI_API_KEY: str = os.getenv('GEMINI_API_KEY', '')
     
-    # Servidor
-    SERVER_HOST: str = os.getenv('SERVER_HOST', '127.0.0.1')
-    SERVER_PORT: int = int(os.getenv('SERVER_PORT', '8000'))
+    SERVER_HOST: str = os.getenv('SERVER_HOST', '0.0.0.0')
+    SERVER_PORT: int = int(os.getenv('PORT', os.getenv('SERVER_PORT', '8000')))
     
     # Modelos disponíveis (ordem de prioridade)
     GEMINI_MODELS: List[str] = os.getenv(
@@ -46,7 +50,7 @@ class Settings:
     ]
     
     # Validações
-    MIN_CHAT_LENGTH: int = 100  # Tamanho mínimo do chat
+    MIN_CHAT_LENGTH: int = 250  # Tamanho mínimo do chat
     MAX_CHAT_LENGTH: int = 50000  # Tamanho máximo (50k chars)
     
     @classmethod
@@ -59,8 +63,8 @@ class Settings:
             )
         
         print("✅ Configurações carregadas com sucesso")
-        print(f"   - Modelos: {', '.join(cls.GEMINI_MODELS)}")
-        print(f"   - Rate Limit: {cls.MAX_REQUESTS_PER_DAY} req/dia")
+        print(f"   - Host: {cls.SERVER_HOST}:{cls.SERVER_PORT}")
+        print(f"   - Log Level: {cls.LOG_LEVEL}")
 
 
 # Instância global de configurações

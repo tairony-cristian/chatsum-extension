@@ -5,19 +5,34 @@ import { ESTADOS } from '../utils/states.js';
  * Gerencia todas as preferências da extensão
  */
 
-// Elementos DOM
+// ============================================
+// ELEMENTOS DOM - ABA GERAL
+// ============================================
+
 const tabButtons = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 const toast = document.getElementById('toast');
 
-// Elementos - Aba Geral
 const modoDefaultRadios = document.querySelectorAll('input[name="modoDefault"]');
-const serverUrlInput = document.getElementById('serverUrl');
 const autoCopiarCheck = document.getElementById('autoCopiar');
 const notificacoesCheck = document.getElementById('notificacoes');
 const btnSalvarGeral = document.getElementById('btnSalvarGeral');
 
-// Elementos - Aba Prompts
+// ============================================
+// ELEMENTOS DOM - ABA SERVIDOR
+// ============================================
+
+const modoDesenvolvedor = document.getElementById('modoDesenvolvedor');
+const serverUrl = document.getElementById('serverUrl');
+const btnSalvarServidor = document.getElementById('btnSalvarServidor');
+const btnTestarConexao = document.getElementById('btnTestarConexao');
+const statusConexao = document.getElementById('statusConexao');
+const resultadoTeste = document.getElementById('resultadoTeste');
+
+// ============================================
+// ELEMENTOS DOM - ABA PROMPTS
+// ============================================
+
 const promptSelector = document.getElementById('promptSelector');
 const editorPrompt = document.getElementById('editorPrompt');
 const promptCustomTextarea = document.getElementById('promptCustom');
@@ -27,7 +42,10 @@ const btnValidarPrompt = document.getElementById('btnValidarPrompt');
 const btnSalvarPrompt = document.getElementById('btnSalvarPrompt');
 const promptStatus = document.getElementById('promptStatus');
 
-// Elementos - Aba Avançado
+// ============================================
+// ELEMENTOS DOM - ABA AVANÇADO
+// ============================================
+
 const btnResetContador = document.getElementById('btnResetContador');
 const btnLimparCache = document.getElementById('btnLimparCache');
 const btnExportar = document.getElementById('btnExportar');
@@ -35,7 +53,10 @@ const btnImportar = document.getElementById('btnImportar');
 const fileImport = document.getElementById('fileImport');
 const debugModeCheck = document.getElementById('debugMode');
 
-// Elementos - Outros
+// ============================================
+// ELEMENTOS DOM - OUTROS
+// ============================================
+
 const btnFechar = document.getElementById('btnFechar');
 
 /**
@@ -59,6 +80,7 @@ async function carregarConfiguracoes() {
   const config = await chrome.storage.local.get([
     'modoResumo',
     'serverUrl',
+    'modoDesenvolvedor',
     'autoCopiar',
     'notificacoes',
     'promptAtivo',
@@ -66,15 +88,23 @@ async function carregarConfiguracoes() {
     'debugMode'
   ]);
   
-  // Geral
+  // ABA GERAL
   const modoRadio = document.querySelector(`input[name="modoDefault"][value="${config.modoResumo || 'ultimo_tecnico'}"]`);
   if (modoRadio) modoRadio.checked = true;
   
-  serverUrlInput.value = config.serverUrl || 'http://localhost:8000';
   autoCopiarCheck.checked = config.autoCopiar || false;
-  notificacoesCheck.checked = config.notificacoes !== false; // true por padrão
+  notificacoesCheck.checked = config.notificacoes !== false;
   
-  // Prompts
+  // ABA SERVIDOR - Carrega checkbox modo desenvolvedor
+  modoDesenvolvedor.checked = config.modoDesenvolvedor === true;
+  
+  // ABA SERVIDOR - Carrega URL do servidor
+  serverUrl.value = config.serverUrl || '';
+  
+  // ABA SERVIDOR - Atualiza estado do campo URL
+  atualizarEstadoServidorUrl();
+  
+  // ABA PROMPTS
   promptSelector.value = config.promptAtivo || 'default';
   promptCustomTextarea.value = config.promptPersonalizado || '';
   
@@ -82,7 +112,7 @@ async function carregarConfiguracoes() {
     editorPrompt.style.display = 'block';
   }
   
-  // Avançado
+  // ABA AVANÇADO
   debugModeCheck.checked = config.debugMode || false;
 }
 
@@ -97,11 +127,37 @@ function registrarEventListeners() {
       switchTab(tabName);
     });
   });
-  
-  // Aba Geral
+
+  // ============================================
+  // EVENTOS - ABA GERAL
+  // ============================================
+
   btnSalvarGeral.addEventListener('click', salvarConfiguracoesGerais);
-  
-  // Aba Prompts
+
+  // ============================================
+  // EVENTOS - ABA SERVIDOR
+  // ============================================
+
+  // Checkbox "Modo Desenvolvedor" muda
+  modoDesenvolvedor.addEventListener('change', atualizarEstadoServidorUrl);
+
+  // Campo URL muda (atualiza status)
+  serverUrl.addEventListener('input', () => {
+    if (!modoDesenvolvedor.checked) {
+      atualizarEstadoServidorUrl();
+    }
+  });
+
+  // Botão "Salvar Configurações" (Servidor)
+  btnSalvarServidor.addEventListener('click', salvarConfiguracaoServidor);
+
+  // Botão "Testar Conexão"
+  btnTestarConexao.addEventListener('click', testarConexao);
+
+  // ============================================
+  // EVENTOS - ABA PROMPTS
+  // ============================================
+
   promptSelector.addEventListener('change', (e) => {
     editorPrompt.style.display = e.target.value === 'custom' ? 'block' : 'none';
   });
@@ -110,15 +166,21 @@ function registrarEventListeners() {
   btnResetPrompt.addEventListener('click', resetPrompt);
   btnValidarPrompt.addEventListener('click', validarPrompt);
   btnSalvarPrompt.addEventListener('click', salvarPrompt);
-  
-  // Aba Avançado
+
+  // ============================================
+  // EVENTOS - ABA AVANÇADO
+  // ============================================
+
   btnResetContador.addEventListener('click', resetarContador);
   btnLimparCache.addEventListener('click', limparCache);
   btnExportar.addEventListener('click', exportarConfiguracoes);
   btnImportar.addEventListener('click', () => fileImport.click());
   fileImport.addEventListener('change', importarConfiguracoes);
-  
-  // Outros
+
+  // ============================================
+  // EVENTOS - OUTROS
+  // ============================================
+
   btnFechar.addEventListener('click', () => window.close());
 }
 
@@ -136,7 +198,49 @@ function switchTab(tabName) {
 }
 
 /**
- * Salva configurações gerais
+ * Atualiza estado do campo "URL do Servidor"
+ * Desativa se modo desenvolvedor está marcado
+ * Ativa se modo desenvolvedor está desmarcado
+ */
+function atualizarEstadoServidorUrl() {
+  if (modoDesenvolvedor.checked) {
+    // Modo desenvolvedor MARCADO → desativa campo URL
+    serverUrl.disabled = true;
+    serverUrl.style.opacity = '0.5';
+    statusConexao.innerHTML = `
+      <div style="padding: 8px; background: #e8f5e9; border-left: 4px solid #4caf50; color: #2e7d32;">
+        ✅ Modo Desenvolvedor ativado<br>
+        <strong>Usando: http://localhost:8000</strong>
+      </div>
+    `;
+    console.log('[Modo] Desenvolvedor ATIVADO - usando localhost:8000');
+  } else {
+    // Modo desenvolvedor DESMARCADO → ativa campo URL
+    serverUrl.disabled = false;
+    serverUrl.style.opacity = '1';
+    
+    if (serverUrl.value.trim()) {
+      statusConexao.innerHTML = `
+        <div style="padding: 8px; background: #e3f2fd; border-left: 4px solid #2196f3; color: #1565c0;">
+          ℹ️ Modo Produção<br>
+          <strong>URL Configurada: ${serverUrl.value.trim()}</strong>
+        </div>
+      `;
+    } else {
+      statusConexao.innerHTML = `
+        <div style="padding: 8px; background: #fff3e0; border-left: 4px solid #ff9800; color: #e65100;">
+          ⚠️ Modo Produção sem URL<br>
+          <strong>Configure a URL do servidor acima</strong>
+        </div>
+      `;
+    }
+    
+    console.log('[Modo] Desenvolvedor DESATIVADO - usando URL remota');
+  }
+}
+
+/**
+ * Salva configurações gerais (ABA GERAL)
  */
 async function salvarConfiguracoesGerais() {
   try {
@@ -144,12 +248,12 @@ async function salvarConfiguracoesGerais() {
     
     await chrome.storage.local.set({
       modoResumo: modoSelecionado,
-      serverUrl: serverUrlInput.value.trim(),
       autoCopiar: autoCopiarCheck.checked,
       notificacoes: notificacoesCheck.checked
     });
     
-    mostrarToast('✅ Configurações salvas com sucesso!', 'success');
+    mostrarToast('✅ Configurações gerais salvas com sucesso!', 'success');
+    console.log('[Config] Geral salva');
     
   } catch (erro) {
     console.error('Erro ao salvar:', erro);
@@ -158,7 +262,131 @@ async function salvarConfiguracoesGerais() {
 }
 
 /**
- * Preview do prompt
+ * Salva configurações do servidor (ABA SERVIDOR)
+ * Valida:
+ * - Se NOT modo desenvolvedor E URL vazio → erro
+ * - Se modo desenvolvedor → limpa URL
+ */
+async function salvarConfiguracaoServidor() {
+  try {
+    const modoDevMarcado = modoDesenvolvedor.checked;
+    const urlRemota = serverUrl.value.trim();
+    
+    // 🔍 VALIDAÇÃO
+    if (!modoDevMarcado && !urlRemota) {
+      mostrarToast('❌ Configure a URL do servidor ou ative Modo Desenvolvedor', 'error');
+      return;
+    }
+    
+    // 💾 SALVAR
+    await chrome.storage.local.set({
+      modoDesenvolvedor: modoDevMarcado,
+      serverUrl: modoDevMarcado ? '' : urlRemota
+    });
+    
+    mostrarToast('✅ Configurações do servidor salvas com sucesso!', 'success');
+    console.log('[Config] Servidor - Modo Dev:', modoDevMarcado, '| URL:', urlRemota || 'localhost');
+    
+    // 🔄 Atualiza status
+    atualizarEstadoServidorUrl();
+    
+  } catch (erro) {
+    console.error('Erro ao salvar configurações do servidor:', erro);
+    mostrarToast('❌ Erro ao salvar configurações', 'error');
+  }
+}
+
+/**
+ * Testa conexão com o servidor configurado
+ * Mostra resultado em tempo real
+ */
+async function testarConexao() {
+  try {
+    resultadoTeste.innerHTML = '⏳ Testando conexão...';
+    btnTestarConexao.disabled = true;
+    
+    // 1. Obter URL configurada
+    const urlServidor = await obterUrlServidor();
+    
+    console.log('[Teste] Testando URL:', urlServidor);
+    
+    // 2. Fazer requisição
+    const response = await fetch(`${urlServidor}/health`, {
+      method: 'GET',
+      timeout: 5000
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      resultadoTeste.innerHTML = `
+        <div style="padding: 12px; background: #e8f5e9; border: 1px solid #4caf50; border-radius: 4px; color: #2e7d32;">
+          <strong>✅ Conexão Bem-sucedida!</strong><br>
+          <small>Servidor: ${urlServidor}</small><br>
+          <small>Status: ${data.status}</small><br>
+          <small>Modelo: ${data.modelo}</small>
+        </div>
+      `;
+      
+      mostrarToast('✅ Servidor respondendo normalmente!', 'success');
+      console.log('[Teste] Sucesso - Servidor OK');
+      
+    } else {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+  } catch (erro) {
+    console.error('[Teste] Erro:', erro);
+    
+    resultadoTeste.innerHTML = `
+      <div style="padding: 12px; background: #ffebee; border: 1px solid #f44336; border-radius: 4px; color: #c62828;">
+        <strong>❌ Erro ao conectar!</strong><br>
+        <small>${erro.message}</small><br>
+        <small>Verifique a URL e se o servidor está rodando.</small>
+      </div>
+    `;
+    
+    mostrarToast('❌ Não foi possível conectar ao servidor', 'error');
+  } finally {
+    btnTestarConexao.disabled = false;
+  }
+}
+
+/**
+ * Obtém URL do servidor baseado nas configurações
+ * Mesma lógica que popup.js usa
+ */
+async function obterUrlServidor() {
+  try {
+    const config = await chrome.storage.local.get([
+      'modoDesenvolvedor',
+      'serverUrl'
+    ]);
+    
+    // 🔧 Se modo desenvolvedor marcado → localhost
+    if (config.modoDesenvolvedor === true) {
+      console.log('[URL] Modo Desenvolvedor: localhost');
+      return 'http://localhost:8000';
+    }
+    
+    // 🌐 Se URL configurada → usa URL
+    if (config.serverUrl?.trim()) {
+      console.log('[URL] Usando URL remota:', config.serverUrl);
+      return config.serverUrl.trim();
+    }
+    
+    // ⚠️ Fallback
+    console.warn('[URL] Nenhuma URL configurada, usando localhost');
+    return 'http://localhost:8000';
+    
+  } catch (erro) {
+    console.error('[URL] Erro:', erro);
+    return 'http://localhost:8000';
+  }
+}
+
+/**
+ * Preview do prompt (ABA PROMPTS)
  */
 function previewPrompt() {
   const prompt = promptCustomTextarea.value;
@@ -174,7 +402,7 @@ function previewPrompt() {
     .replace(/{data}/g, new Date().toLocaleDateString('pt-BR'))
     .replace(/{hora}/g, new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
   
-  // Mostra em modal ou alert
+  // Mostra em modal
   const modal = window.open('', 'Preview do Prompt', 'width=600,height=400,scrollbars=yes');
   modal.document.write(`
     <html>
@@ -194,7 +422,7 @@ function previewPrompt() {
 }
 
 /**
- * Reseta prompt para padrão
+ * Reseta prompt para padrão (ABA PROMPTS)
  */
 async function resetPrompt() {
   const confirmar = confirm('Tem certeza que deseja restaurar o prompt padrão? Suas alterações serão perdidas.');
@@ -203,8 +431,8 @@ async function resetPrompt() {
   
   // Busca prompt padrão do servidor
   try {
-    const serverUrl = serverUrlInput.value.trim();
-    const response = await fetch(`${serverUrl}/resumidor/prompt-default`);
+    const urlServidor = await obterUrlServidor();
+    const response = await fetch(`${urlServidor}/resumidor/prompt-default`);
     
     if (response.ok) {
       const data = await response.json();
@@ -224,7 +452,7 @@ async function resetPrompt() {
 }
 
 /**
- * Valida prompt personalizado
+ * Valida prompt personalizado (ABA PROMPTS)
  */
 function validarPrompt() {
   const prompt = promptCustomTextarea.value;
@@ -264,7 +492,7 @@ function validarPrompt() {
 }
 
 /**
- * Salva prompt personalizado
+ * Salva prompt personalizado (ABA PROMPTS)
  */
 async function salvarPrompt() {
   const promptAtivo = promptSelector.value;
@@ -286,13 +514,18 @@ async function salvarPrompt() {
     });
     
     mostrarToast('✅ Prompt salvo com sucesso!', 'success');
+    promptStatus.innerHTML = '';
+    
   } catch (erro) {
-       mostrarToast('❌ Erro ao salvar prompt', 'error');
+    console.error('Erro ao salvar prompt:', erro);
+    mostrarToast('❌ Erro ao salvar prompt', 'error');
   }
 }
 
 /**
  * Valida prompt customizado
+ * Nota: {ultimo_tecnico} é OPCIONAL
+ * O chat é enviado automaticamente junto com o prompt personalizado
  */
 function validarPromptCustom(prompt) {
   if (!prompt || !prompt.trim()) {
@@ -306,12 +539,12 @@ function validarPromptCustom(prompt) {
   if (prompt.length > 5000) {
     return [false, 'Prompt muito longo (máximo 5000 caracteres)'];
   }
- 
+  
   return [true, null];
 }
 
 /**
- * Reseta contador de requisições
+ * Reseta contador de requisições (ABA AVANÇADO)
  */
 async function resetarContador() {
   const confirmar = confirm('Deseja resetar o contador de requisições?');
@@ -326,7 +559,7 @@ async function resetarContador() {
 }
 
 /**
- * Limpa todo o cache
+ * Limpa todo o cache (ABA AVANÇADO)
  */
 async function limparCache() {
   const confirmar = confirm(
@@ -342,7 +575,7 @@ async function limparCache() {
 }
 
 /**
- * Exporta configurações para arquivo JSON
+ * Exporta configurações para arquivo JSON (ABA AVANÇADO)
  */
 async function exportarConfiguracoes() {
   const config = await chrome.storage.local.get(null);
@@ -366,7 +599,7 @@ async function exportarConfiguracoes() {
 }
 
 /**
- * Importa configurações de arquivo JSON
+ * Importa configurações de arquivo JSON (ABA AVANÇADO)
  */
 async function importarConfiguracoes(event) {
   const file = event.target.files[0];
