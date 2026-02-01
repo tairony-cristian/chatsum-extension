@@ -27,7 +27,6 @@ Data: {data}
 ### Validações
 - Mínimo: 50 caracteres
 - Máximo: 5000 caracteres
-- Obrigatório: {ultimo_tecnico}
 
 ### Best Practices
 1. Seja específico

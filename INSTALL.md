@@ -38,10 +38,10 @@ Este guia fornece instruções detalhadas para instalar e configurar o ChatSum.
 ### **Passo 1: Clone o Repositório**
 ```bash
 # Via HTTPS
-git clone https://github.com/seu-usuario/chatsum-extension.git
+git clone https://github.com/tairony-cristian/chatsum-extension.git
 
 # Ou via SSH
-git clone git@github.com:seu-usuario/chatsum-extension.git
+git clone git@github.com:tairony-cristian/chatsum-extension.git
 
 # Entre na pasta
 cd chatsum-extension
@@ -95,7 +95,7 @@ GEMINI_API_KEY=SUA_CHAVE_AQUI
 SERVER_HOST=127.0.0.1
 SERVER_PORT=8000
 GEMINI_MODELS=gemini-2.5-flash,gemini-2.5-pro
-MAX_REQUESTS_PER_DAY=50
+MAX_REQUESTS_PER_DAY=20
 LOG_LEVEL=INFO
 ```
 
@@ -111,7 +111,7 @@ python main.py
 🚀 ChatSum API v2.0.0 - Iniciando...
 📡 Servidor: 127.0.0.1:8000
 🤖 Modelo IA: gemini-2.5-flash
-📊 Rate Limit: 50 req/dia
+📊 Rate Limit: 20 req/dia
 ============================================================
 INFO:     Started server process
 INFO:     Waiting for application startup.
@@ -368,9 +368,9 @@ Instalação concluída! Agora você pode:
 ## 💬 **Precisa de Ajuda?**
 
 - 📖 [Documentação Completa](docs/)
-- 🐛 [Reportar Bug](https://github.com/seu-usuario/chatsum-extension/issues)
-- 💡 [Sugerir Feature](https://github.com/seu-usuario/chatsum-extension/issues/new)
-- 📧 Email: seu.email@example.com
+- 🐛 [Reportar Bug](https://github.com/tairony-cristian/chatsum-extension/issues)
+- 💡 [Sugerir Feature](https://github.com/tairony-cristian/chatsum-extension/issues/new)
+- 📧 Email: taironycristian@yahoo.com.br
 
 ---
 

@@ -68,7 +68,7 @@ Retorna prompt modo completo
 Valida prompt personalizado
 
 ## Rate Limiting
-- Máximo: 50 requisições/dia
+- Máximo: 20 requisições/dia
 - Por cliente: IP + User-Agent
 
 ## Autenticação

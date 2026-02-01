@@ -1,11 +1,6 @@
 """
 Configurações do servidor - Carrega variáveis do .env
 Nunca exponha dados sensíveis diretamente no código!
-
-DEPLOYMENT NOTES:
-- Em Railway: PORT é lido automaticamente, usa 0.0.0.0
-- Em Local: usa 127.0.0.1:8000
-- SERVER_HOST: 0.0.0.0 é universal (funciona em Railway e Local)
 """
 
 import os
@@ -23,7 +18,10 @@ class Settings:
     
     # API Keys (NUNCA commitar!)
     GEMINI_API_KEY: str = os.getenv('GEMINI_API_KEY', '')
+    GROQ_API_KEY: str = os.getenv('GROQ_API_KEY', '')
+    OPENAI_API_KEY: str = os.getenv('OPENAI_API_KEY', '')
     
+    # Servidor
     SERVER_HOST: str = os.getenv('SERVER_HOST', '0.0.0.0')
     SERVER_PORT: int = int(os.getenv('PORT', os.getenv('SERVER_PORT', '8000')))
     
@@ -50,21 +48,33 @@ class Settings:
     ]
     
     # Validações
-    MIN_CHAT_LENGTH: int = 250  # Tamanho mínimo do chat
+    MIN_CHAT_LENGTH: int = 100  # Tamanho mínimo do chat
     MAX_CHAT_LENGTH: int = 50000  # Tamanho máximo (50k chars)
     
     @classmethod
     def validate(cls):
-        """Valida configurações obrigatórias"""
-        if not cls.GEMINI_API_KEY:
+        """Valida que ao menos uma API key está configurada"""
+        disponiveis = []
+        if cls.GEMINI_API_KEY:
+            disponiveis.append("Gemini")
+        if cls.GROQ_API_KEY:
+            disponiveis.append("Groq")
+        if cls.OPENAI_API_KEY:
+            disponiveis.append("OpenAI")
+
+        if not disponiveis:
             raise ValueError(
-                "❌ GEMINI_API_KEY não configurada! "
-                "Edite o arquivo .env e adicione sua chave."
+                "Nenhuma API key configurada! "
+                "Configure ao menos uma no arquivo .env:\n"
+                "  GEMINI_API_KEY  -> console.cloud.google.com\n"
+                "  GROQ_API_KEY    -> console.groq.com\n"
+                "  OPENAI_API_KEY  -> platform.openai.com"
             )
-        
-        print("✅ Configurações carregadas com sucesso")
-        print(f"   - Host: {cls.SERVER_HOST}:{cls.SERVER_PORT}")
-        print(f"   - Log Level: {cls.LOG_LEVEL}")
+
+        print("Configurações carregadas com sucesso")
+        print(f"   - Provedores disponíveis: {', '.join(disponiveis)}")
+        print(f"   - Rate Limit: {cls.MAX_REQUESTS_PER_DAY} req/dia")
+
 
 
 # Instância global de configurações

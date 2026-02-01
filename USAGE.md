@@ -232,7 +232,7 @@ Após editar:
 
 ### **2. Economize Requisições**
 
-O limite é **50 requisições/dia** no plano gratuito.
+O limite é **20 requisições/dia** no plano gratuito.
 
 **Dicas:**
 - ✅ Agrupe atendimentos similares
@@ -242,7 +242,7 @@ O limite é **50 requisições/dia** no plano gratuito.
 
 **Veja seu contador:**
 ```
-📊 Requisições hoje: 12/50
+📊 Requisições hoje: 12/20
 ```
 
 ### **3. Copie com Formatação**
@@ -445,9 +445,9 @@ Em breve você poderá:
 
 ### **Reportar Problemas**
 
-- 🐛 [Issues no GitHub](https://github.com/seu-usuario/chatsum-extension/issues)
-- 📧 Email: seu.email@example.com
-- 💬 Discussões: [GitHub Discussions](https://github.com/seu-usuario/chatsum-extension/discussions)
+- 🐛 [Issues no GitHub](https://github.com/tairony-cristian/chatsum-extension/issues)
+- 📧 Email: taironycristian@yahoo.com.br
+- 💬 Discussões: [GitHub Discussions](https://github.com/tairony-cristian/chatsum-extension/discussions)
 
 ---
 

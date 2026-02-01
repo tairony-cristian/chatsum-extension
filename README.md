@@ -6,6 +6,40 @@
 
 > Extensão Chrome que gera resumos técnicos automáticos de conversas de suporte usando Inteligência Artificial (Google Gemini).
 
+
+# ChatSum Server
+
+## 🚀 Instalação automática (recomendada)
+
+Clique no botão abaixo e siga as instruções na tela:
+
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/chatsum)
+
+
+
+## 🧾 O que você vai precisar
+- Uma conta no GitHub (gratuita)
+- Uma conta no Railway (gratuita)
+- Uma chave da API do Gemini (gratuita)
+
+## 🪜 Passo a passo
+1. Clique no botão **Deploy on Railway**
+2. Faça login no Railway
+3. Informe sua **GEMINI_API_KEY**
+4. Clique em **Deploy**
+5. Aguarde o deploy finalizar
+6. Copie a URL gerada
+7. Cole essa URL na extensão ChatSum
+
+## 🔑 Variáveis obrigatórias
+
+### GEMINI_API_KEY
+Chave da API do Gemini usada para gerar os resumos.
+
+🔒 Sua chave fica privada e só é usada no seu projeto.
+([Obter aqui](https://aistudio.google.com/app/apikey))
+
+
 ## 🎯 **Características Principais**
 
 - ✨ **Resumo Automático**: Gera resumos técnicos profissionais com um clique
@@ -211,7 +245,7 @@ A extensão remove automaticamente:
 
 ## 📊 **Limitações**
 
-- **Quota Diária**: 50 requisições/dia (plano gratuito Gemini)
+- **Quota Diária**: 20 requisições/dia (plano gratuito Gemini)
 - **Tamanho do Chat**: Máximo 50.000 caracteres
 - **Plataformas**: Funciona melhor em sistemas web modernos
 - **Idioma**: Otimizado para português brasileiro
@@ -232,7 +266,7 @@ python main.py
 ### **Erro: "Chat não capturado"**
 - Verifique se está em uma página de chat ativa
 - Ative o modo debug para mais informações
-- Reporte a plataforma não suportada [aqui](https://github.com/seu-usuario/chatsum-extension/issues)
+- Reporte a plataforma não suportada [aqui](https://github.com/tairony-cristian/chatsum-extension/issues)
 
 ### **Servidor não inicia**
 ```bash
@@ -278,9 +312,9 @@ Este projeto está sob a licença MIT. Veja [LICENSE](LICENSE) para mais detalhe
 ## 👤 **Autor**
 
 **Seu Nome**
-- GitHub: [@seu-usuario](https://github.com/seu-usuario)
-- LinkedIn: [Seu Perfil](https://linkedin.com/in/seu-perfil)
-- Email: seu.email@example.com
+- GitHub: [@seu-usuario](https://github.com/tairony-cristian)
+- LinkedIn: [Seu Perfil](https://www.linkedin.com/in/tairony-cristian-folgado/)
+- Email: taironycristian@yahoo.com.br
 
 ## 🙏 **Agradecimentos**
 

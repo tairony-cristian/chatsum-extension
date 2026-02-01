@@ -35,6 +35,11 @@ class ResumoRequest(BaseModel):
         description="Prompt personalizado (opcional)"
     )
     
+    iaProvider: Literal["gemini", "groq", "openai"] = Field(
+        default="gemini",
+        description="Provedor de IA: gemini, groq ou openai"
+    )
+    
     @validator('texto')
     def validar_texto(cls, v):
         """Valida que texto não está vazio após strip"""
@@ -52,9 +57,11 @@ class ResumoResponse(BaseModel):
     """Resposta com resumo gerado"""
     
     resumo: str = Field(..., description="Resumo gerado pela IA")
-    timestamp: str = Field(..., description="Data/hora da geração")
-    ultimoTecnico: str = Field(..., description="Técnico que atendeu")
+    timestamp: str = Field(..., description="Data/hora da geraÃ§Ã£o")
+    ultimoTecnico: str = Field(..., description="TÃ©cnico que atendeu")
     modo: str = Field(..., description="Modo usado para gerar")
+    iaUsada: str = Field(default="gemini", description="Provedor de IA que gerou o resumo")
+    iaSolicitada: str = Field(default="gemini", description="Provedor de IA solicitado pelo cliente")
     
     model_config = ConfigDict(
         json_schema_extra={

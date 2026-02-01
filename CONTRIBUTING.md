@@ -26,12 +26,6 @@ Este projeto adota o [Contributor Covenant](https://www.contributor-covenant.org
 - ✅ Foque no melhor para a comunidade
 - ❌ Não tolere assédio ou discriminação
 
-### **Reportando Violações**
-
-Email: conduct@seudominio.com
-
----
-
 ## 🛠️ **Como Contribuir**
 
 ### **Tipos de Contribuição**
@@ -52,7 +46,7 @@ Aceitamos contribuições em várias formas:
 ```bash
 # Clique em "Fork" no GitHub
 # Depois clone seu fork:
-git clone https://github.com/SEU-USUARIO/chatsum-extension.git
+git clone https://github.com/tairony-cristian/chatsum-extension.git
 cd chatsum-extension
 ```
 
@@ -110,7 +104,7 @@ git push origin feature/minha-feature
 
 ### **Antes de Reportar**
 
-- ✅ Verifique se o bug já foi reportado nas [Issues](https://github.com/seu-usuario/chatsum-extension/issues)
+- ✅ Verifique se o bug já foi reportado nas [Issues](https://github.com/tairony-cristian/chatsum-extension/issues)
 - ✅ Teste na versão mais recente
 - ✅ Verifique se não é um problema de configuração
 
@@ -464,8 +458,8 @@ Interessado em traduzir o ChatSum?
 
 ## ❓ **Dúvidas?**
 
-- 💬 [GitHub Discussions](https://github.com/seu-usuario/chatsum-extension/discussions)
-- 📧 Email: dev@seudominio.com
+- 💬 [GitHub Discussions](https://github.com/tairony-cristian/chatsum-extension/discussions)
+- 📧 Email: taironycristian@yahoo.com.br
 
 ---
 

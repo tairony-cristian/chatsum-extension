@@ -85,7 +85,8 @@ async function carregarConfiguracoes() {
     'notificacoes',
     'promptAtivo',
     'promptPersonalizado',
-    'debugMode'
+    'debugMode',
+    'iaProvider'
   ]);
   
   // ABA GERAL
@@ -94,6 +95,16 @@ async function carregarConfiguracoes() {
   
   autoCopiarCheck.checked = config.autoCopiar || false;
   notificacoesCheck.checked = config.notificacoes !== false;
+
+  // ABA GERAL - Provedor de IA
+  const providerRadio = document.querySelector(`input[name="iaProvider"][value="${config.iaProvider || 'gemini'}"]`);
+  if (providerRadio) providerRadio.checked = true;
+  atualizarInfoProvider(config.iaProvider || 'gemini');
+
+  // Listener para atualizar info ao trocar provider
+  document.querySelectorAll('input[name="iaProvider"]').forEach(radio => {
+    radio.addEventListener('change', (e) => atualizarInfoProvider(e.target.value));
+  });
   
   // ABA SERVIDOR - Carrega checkbox modo desenvolvedor
   modoDesenvolvedor.checked = config.modoDesenvolvedor === true;
@@ -245,15 +256,17 @@ function atualizarEstadoServidorUrl() {
 async function salvarConfiguracoesGerais() {
   try {
     const modoSelecionado = document.querySelector('input[name="modoDefault"]:checked').value;
+    const iaProviderSelecionado = document.querySelector('input[name="iaProvider"]:checked')?.value || 'gemini';
     
     await chrome.storage.local.set({
       modoResumo: modoSelecionado,
       autoCopiar: autoCopiarCheck.checked,
-      notificacoes: notificacoesCheck.checked
+      notificacoes: notificacoesCheck.checked,
+      iaProvider: iaProviderSelecionado
     });
     
     mostrarToast('✅ Configurações gerais salvas com sucesso!', 'success');
-    console.log('[Config] Geral salva');
+    console.log('[Config] Geral salva | IA:', iaProviderSelecionado);
     
   } catch (erro) {
     console.error('Erro ao salvar:', erro);
@@ -664,4 +677,20 @@ Sua única tarefa é resumir o atendimento **APENAS** com base nas mensagens do 
 
 **SOLUÇÃO:**
 [Ação resolutiva e status final]`;
+}
+
+/**
+ * Atualiza info do provider selecionado (ABA GERAL)
+ */
+function atualizarInfoProvider(provider) {
+  const el = document.getElementById('iaProviderInfo');
+  if (!el) return;
+
+  const infos = {
+    gemini: 'Configure <strong>GEMINI_API_KEY</strong> no arquivo <code>.env</code> do servidor.',
+    groq:   'Configure <strong>GROQ_API_KEY</strong> no arquivo <code>.env</code>. Obtenha em <a href="https://console.groq.com/keys" target="_blank">console.groq.com</a>',
+    openai: 'Configure <strong>OPENAI_API_KEY</strong> no arquivo <code>.env</code>. Obtenha em <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>'
+  };
+
+  el.innerHTML = `<p class="provider-hint">${infos[provider] || ''}</p>`;
 }

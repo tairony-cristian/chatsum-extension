@@ -1,116 +1,380 @@
 """
-Serviço de integração com Google Gemini AI
-Usa apenas Google SDK para máxima compatibilidade
+Serviço de integração com múltiplos provedores de IA
+Suporta: Google Gemini, Groq e OpenAI (GPT)
 """
 
-import logging
+import httpx
+import json
+import re
+import time
 from typing import Optional
+import logging
 from config.settings import settings
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-try:
-    from google import generativeai as genai
-except ImportError:
-    raise ImportError("google-generativeai não instalado: pip install google-generativeai")
 
+# ─────────────────────────────────────────────
+# Helpers para parsing de erros do Gemini
+# ─────────────────────────────────────────────
+
+def _parse_retry_after(response_body: str) -> Optional[int]:
+    """Extrai retry_delay em segundos da resposta 429 do Gemini."""
+    try:
+        data = json.loads(response_body)
+        for detail in data.get("error", {}).get("details", []):
+            retry_delay = detail.get("retryDelay", "")
+            if retry_delay:
+                match = re.search(r"(\d+)", str(retry_delay))
+                if match:
+                    return int(match.group(1))
+    except Exception:
+        pass
+
+    match = re.search(r"retry_delay\s*\{[^}]*seconds:\s*(\d+)", response_body)
+    if match:
+        return int(match.group(1))
+
+    match = re.search(r"retry in (\d+)", response_body, re.IGNORECASE)
+    if match:
+        return int(match.group(1)) + 1
+
+    return None
+
+
+def _is_daily_quota(response_body: str) -> bool:
+    """Retorna True se o 429 for de cota DIÁRIA."""
+    return "PerDay" in response_body or "per_day" in response_body.lower()
+
+
+# ─────────────────────────────────────────────
+# Serviço principal
+# ─────────────────────────────────────────────
 
 class AIService:
-    """Gerenciador de serviços de IA via Google SDK"""
-    
-    def __init__(self):
-        """Inicializa serviço e configura API"""
-        self.api_key = settings.GEMINI_API_KEY
-        
-        if not self.api_key:
-            raise ValueError("GEMINI_API_KEY não configurada")
-        
-        try:
-            genai.configure(api_key=self.api_key)
-            self.model_name = "gemini-2.5-flash"
-            logger.warning("[OK] Google SDK inicializado")
-        except Exception as e:
-            logger.critical(f"[ERRO] Falha ao inicializar Google SDK: {e}")
-            raise
+    """Gerenciador de IA com suporte a Gemini, Groq e OpenAI"""
 
-    def _interpolar_prompt(self, prompt_template: str, ultimo_tecnico: str = "") -> str:
-        """Interpola variáveis no prompt de forma segura"""
-        resultado = prompt_template.replace(
-            '{ultimo_tecnico}',
-            ultimo_tecnico or "o último técnico"
-        ).replace(
-            '{data}',
-            datetime.now().strftime("%d/%m/%Y")
-        ).replace(
-            '{hora}',
-            datetime.now().strftime("%H:%M")
-        )
-        return resultado
+    MAX_RETRIES_SERVER_ERROR = 3
+    RETRY_DELAY_SECONDS = 5
+
+    def __init__(self):
+        self._validar_chaves()
+        self.ultimo_modelo_usado = None
+        logger.info("[OK] AIService inicializado com suporte a Gemini, Groq e OpenAI")
+
+    def _validar_chaves(self):
+        """Valida que ao menos uma API key está configurada"""
+        disponiveis = []
+        if settings.GEMINI_API_KEY:
+            disponiveis.append("Gemini")
+        if settings.GROQ_API_KEY:
+            disponiveis.append("Groq")
+        if settings.OPENAI_API_KEY:
+            disponiveis.append("OpenAI")
+
+        if not disponiveis:
+            raise ValueError(
+                "Nenhuma API key configurada! "
+                "Configure ao menos uma no arquivo .env:\n"
+                "  GEMINI_API_KEY  -> aistudio.google.com/apikey\n"
+                "  GROQ_API_KEY    -> console.groq.com/keys\n"
+                "  OPENAI_API_KEY  -> platform.openai.com/api-keys"
+            )
+        logger.info(f"[OK] Provedores disponíveis: {', '.join(disponiveis)}")
 
     def generate_summary(
         self,
         texto: str,
         prompt_template: str,
         ultimo_tecnico: str = "",
-        max_retries: int = 3
+        ia_provider: str = "gemini"
     ) -> Optional[str]:
         """
-        Gera resumo usando IA
-        
-        Args:
-            texto: Conversa a resumir
-            prompt_template: Template do prompt
-            ultimo_tecnico: Nome do último técnico
-            max_retries: Tentativas em caso de erro
-            
-        Returns:
-            Resumo gerado ou None em caso de erro
-            
+        Gera resumo usando o provedor solicitado.
+        Se o provedor não tiver chave ou falhar, faz fallback para o próximo disponível.
+
         Raises:
-            QuotaExceededError: Se limite da API foi atingido
+            DailyQuotaExceededError: Limite diário atingido
+            RateLimitError: Limite por minuto — inclui retry_after
+            ServiceUnavailableError: Servidor indisponível após todas as tentativas
+            TimeoutError: Timeout na requisição
         """
-        
-        prompt_personalizado = self._interpolar_prompt(
-            prompt_template,
-            ultimo_tecnico=ultimo_tecnico
+        # Interpolação segura — evita KeyError se o chat tiver { }
+        prompt_personalizado = prompt_template.replace(
+            "{ultimo_tecnico}", ultimo_tecnico or "o último técnico"
         )
-        prompt_final = f"{prompt_personalizado}\n\n=== HISTORICO DO CHAT ===\n{texto}"
-        
-        for tentativa in range(1, max_retries + 1):
+        prompt_final = f"{prompt_personalizado}\n\n=== HISTÓRICO DO CHAT ===\n{texto}"
+
+        ordem = self._montar_ordem_providers(ia_provider)
+
+        ultimo_erro = None
+        for provider in ordem:
+            logger.info(f"[INFO] Tentando provedor: {provider}")
             try:
-                logger.info(f"[INFO] Tentativa {tentativa}/{max_retries}")
-                
-                model = genai.GenerativeModel(self.model_name)
-                response = model.generate_content(prompt_final)
-                
-                if response.text:
-                    logger.warning(f"[OK] Resumo gerado com sucesso")
-                    return response.text
-                else:
-                    logger.warning("[AVISO] Resposta vazia do modelo")
-                    
+                resultado = self._chamar_provider(provider, prompt_final)
+                if resultado:
+                    self.ultimo_modelo_usado = provider
+                    return resultado
+            except ProviderNotConfiguredError:
+                logger.warning(f"[AVISO] {provider} sem API key, pulando...")
+                continue
+            except (DailyQuotaExceededError, RateLimitError, ServiceUnavailableError, TimeoutError):
+                # Propaga erros específicos sem tentar fallback automático
+                raise
             except Exception as e:
-                error_msg = str(e)
-                logger.warning(f"[AVISO] Tentativa {tentativa}: {error_msg}")
-                
-                if tentativa == max_retries:
-                    if "429" in error_msg or "quota" in error_msg.lower():
-                        raise QuotaExceededError(
-                            "Limite de quota atingido. Aguarde alguns minutos e tente novamente."
+                logger.warning(f"[AVISO] {provider} falhou: {e}, tentando próximo...")
+                ultimo_erro = e
+                continue
+
+        if ultimo_erro:
+            raise ultimo_erro
+
+        raise QuotaExceededError("Todos os provedores falharam.")
+
+    def _montar_ordem_providers(self, preferido: str) -> list:
+        todos = ["gemini", "groq", "openai"]
+        return [preferido] + [p for p in todos if p != preferido]
+
+    def _chamar_provider(self, provider: str, prompt: str) -> Optional[str]:
+        if provider == "gemini":
+            return self._chamar_gemini(prompt)
+        elif provider == "groq":
+            return self._chamar_groq(prompt)
+        elif provider == "openai":
+            return self._chamar_openai(prompt)
+        raise ValueError(f"Provider desconhecido: {provider}")
+
+    # ── GEMINI ──────────────────────────────────
+
+    def _chamar_gemini(self, prompt: str) -> Optional[str]:
+        if not settings.GEMINI_API_KEY:
+            raise ProviderNotConfiguredError("GEMINI_API_KEY não configurada")
+
+        base_url = "https://generativelanguage.googleapis.com/v1beta"
+        modelos = getattr(settings, 'GEMINI_MODELS', ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-pro-latest'])
+
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.7,
+                "topK": 40,
+                "topP": 0.95,
+                "maxOutputTokens": 4096,
+            }
+        }
+
+        for modelo in modelos:
+            for tentativa in range(1, self.MAX_RETRIES_SERVER_ERROR + 1):
+                try:
+                    if tentativa > 1:
+                        logger.warning(f"[Gemini] Tentativa {tentativa} com {modelo}")
+
+                    url = f"{base_url}/models/{modelo}:generateContent"
+                    with httpx.Client(timeout=settings.REQUEST_TIMEOUT) as client:
+                        response = client.post(
+                            url, json=payload,
+                            headers={"Content-Type": "application/json"},
+                            params={"key": settings.GEMINI_API_KEY}
                         )
-                    else:
-                        raise QuotaExceededError(
-                            f"Erro ao gerar resumo: {error_msg}"
+
+                    if response.status_code >= 400:
+                        logger.error(f"[Gemini] Status {response.status_code}: {response.text[:300]}")
+
+                    if response.status_code == 429:
+                        body = response.text
+                        retry_after = _parse_retry_after(body)
+                        if _is_daily_quota(body):
+                            raise DailyQuotaExceededError("Limite diário de requisições atingido.")
+                        raise RateLimitError("Muitas requisições por minuto.", retry_after=retry_after)
+
+                    if response.status_code in (502, 503):
+                        if tentativa < self.MAX_RETRIES_SERVER_ERROR:
+                            time.sleep(self.RETRY_DELAY_SECONDS)
+                            continue
+                        raise ServiceUnavailableError("Servidor Gemini indisponível.")
+
+                    if response.status_code == 404:
+                        logger.warning(f"[Gemini] Modelo {modelo} não encontrado, tentando próximo")
+                        break  # próximo modelo
+
+                    response.raise_for_status()
+                    data = response.json()
+
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts and "text" in parts[0]:
+                            texto = parts[0]["text"].strip()
+                            if texto:
+                                logger.info(f"[Gemini] OK com {modelo}")
+                                return texto
+
+                except (DailyQuotaExceededError, RateLimitError, ServiceUnavailableError):
+                    raise
+                except httpx.TimeoutException:
+                    if tentativa == self.MAX_RETRIES_SERVER_ERROR:
+                        raise TimeoutError("Timeout ao chamar API do Gemini.")
+                    time.sleep(self.RETRY_DELAY_SECONDS)
+                except Exception as e:
+                    logger.error(f"[Gemini] Erro: {e}")
+                    raise
+
+        return None
+
+    # ── GROQ ────────────────────────────────────
+
+    def _chamar_groq(self, prompt: str) -> Optional[str]:
+        if not settings.GROQ_API_KEY:
+            raise ProviderNotConfiguredError("GROQ_API_KEY não configurada")
+
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        modelos = ["llama-3.3-70b-versatile", "llama3-70b-8192", "mixtral-8x7b-32768"]
+
+        for modelo in modelos:
+            for tentativa in range(1, self.MAX_RETRIES_SERVER_ERROR + 1):
+                try:
+                    payload = {
+                        "model": modelo,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.7,
+                        "max_tokens": 4096,
+                    }
+                    with httpx.Client(timeout=settings.REQUEST_TIMEOUT) as client:
+                        response = client.post(
+                            url, json=payload,
+                            headers={
+                                "Content-Type": "application/json",
+                                "Authorization": f"Bearer {settings.GROQ_API_KEY}"
+                            }
                         )
-        
+
+                    if response.status_code == 429:
+                        retry_after = int(response.headers.get("retry-after", 60))
+                        raise RateLimitError("Groq: muitas requisições.", retry_after=retry_after)
+
+                    if response.status_code in (400, 404):
+                        logger.warning(f"[Groq] Modelo {modelo} indisponível ({response.status_code})")
+                        break
+
+                    if response.status_code in (502, 503):
+                        if tentativa < self.MAX_RETRIES_SERVER_ERROR:
+                            time.sleep(self.RETRY_DELAY_SECONDS)
+                            continue
+                        raise ServiceUnavailableError("Servidor Groq indisponível.")
+
+                    response.raise_for_status()
+                    texto = self._extrair_openai_format(response.json())
+                    if texto:
+                        logger.info(f"[Groq] OK com {modelo}")
+                        return texto
+
+                except (RateLimitError, ServiceUnavailableError):
+                    raise
+                except httpx.TimeoutException:
+                    if tentativa == self.MAX_RETRIES_SERVER_ERROR:
+                        raise TimeoutError("Timeout ao chamar API do Groq.")
+                    time.sleep(self.RETRY_DELAY_SECONDS)
+                except Exception as e:
+                    logger.error(f"[Groq] Erro: {e}")
+                    raise
+
+        return None
+
+    # ── OPENAI ──────────────────────────────────
+
+    def _chamar_openai(self, prompt: str) -> Optional[str]:
+        if not settings.OPENAI_API_KEY:
+            raise ProviderNotConfiguredError("OPENAI_API_KEY não configurada")
+
+        url = "https://api.openai.com/v1/chat/completions"
+        modelos = ["gpt-4o-mini", "gpt-3.5-turbo"]
+
+        for modelo in modelos:
+            for tentativa in range(1, self.MAX_RETRIES_SERVER_ERROR + 1):
+                try:
+                    payload = {
+                        "model": modelo,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.7,
+                        "max_tokens": 4096,
+                    }
+                    with httpx.Client(timeout=settings.REQUEST_TIMEOUT) as client:
+                        response = client.post(
+                            url, json=payload,
+                            headers={
+                                "Content-Type": "application/json",
+                                "Authorization": f"Bearer {settings.OPENAI_API_KEY}"
+                            }
+                        )
+
+                    if response.status_code == 429:
+                        retry_after = int(response.headers.get("retry-after", 60))
+                        raise RateLimitError("OpenAI: muitas requisições.", retry_after=retry_after)
+
+                    if response.status_code in (400, 404):
+                        logger.warning(f"[OpenAI] Modelo {modelo} indisponível ({response.status_code})")
+                        break
+
+                    if response.status_code in (502, 503):
+                        if tentativa < self.MAX_RETRIES_SERVER_ERROR:
+                            time.sleep(self.RETRY_DELAY_SECONDS)
+                            continue
+                        raise ServiceUnavailableError("Servidor OpenAI indisponível.")
+
+                    response.raise_for_status()
+                    texto = self._extrair_openai_format(response.json())
+                    if texto:
+                        logger.info(f"[OpenAI] OK com {modelo}")
+                        return texto
+
+                except (RateLimitError, ServiceUnavailableError):
+                    raise
+                except httpx.TimeoutException:
+                    if tentativa == self.MAX_RETRIES_SERVER_ERROR:
+                        raise TimeoutError("Timeout ao chamar API da OpenAI.")
+                    time.sleep(self.RETRY_DELAY_SECONDS)
+                except Exception as e:
+                    logger.error(f"[OpenAI] Erro: {e}")
+                    raise
+
+        return None
+
+    def _extrair_openai_format(self, data: dict) -> Optional[str]:
+        choices = data.get("choices", [])
+        if choices:
+            return choices[0].get("message", {}).get("content", "").strip() or None
         return None
 
     def get_model_name(self) -> str:
-        """Retorna nome do modelo atual"""
-        return self.model_name
+        return self.ultimo_modelo_usado or "nenhum"
 
 
+# ─────────────────────────────────────────────
+# Exceções personalizadas
+# ─────────────────────────────────────────────
+
+class DailyQuotaExceededError(Exception):
+    """Limite DIÁRIO da API atingido"""
+    pass
+
+
+class RateLimitError(Exception):
+    """Limite por MINUTO atingido. retry_after: segundos para aguardar."""
+    def __init__(self, message: str, retry_after: Optional[int] = None):
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
+class ServiceUnavailableError(Exception):
+    """Servidor indisponível após todas as tentativas"""
+    pass
+
+
+class ProviderNotConfiguredError(Exception):
+    """Provedor sem API key configurada"""
+    pass
+
+
+# Mantido para compatibilidade com imports existentes
 class QuotaExceededError(Exception):
-    """Limite de quota da API foi excedido ou erro na geração"""
     pass
