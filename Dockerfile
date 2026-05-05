@@ -11,8 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código
 COPY server/ .
 
-# Expor porta
+# Porta (Railway injeta via $PORT)
 EXPOSE 8000
 
-# Comando para iniciar
-CMD ["python", "main.py"]
+# Usa $PORT do Railway, fallback 8000 para local
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}

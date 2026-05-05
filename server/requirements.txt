@@ -1,16 +1,18 @@
 # Framework Web
 fastapi==0.109.0
-uvicorn==0.27.0
+uvicorn[standard]==0.27.0
 pydantic==2.5.3
 
 # IA e ML
 google-generativeai==0.3.2
 
+# HTTP Client (necessário para Groq e OpenAI)
+httpx==0.26.0
+
 # Utilitários
 python-dotenv==1.0.0
 python-multipart==0.0.6
 
-# Opcional (para desenvolvimento)
+# Testes (opcional)
 pytest==7.4.4
 pytest-asyncio==0.23.3
-httpx==0.26.0  # Para testes de API
