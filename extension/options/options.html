@@ -205,6 +205,15 @@
             placeholder="Digite seu prompt personalizado aqui..."
           ></textarea>
 
+          <!-- Contador de caracteres -->
+          <div class="char-counter" id="promptCharCounter">
+            <span id="promptCharCount">0</span>&nbsp;/&nbsp;10.000 caracteres
+            <span id="promptCharWarning"></span>
+          </div>
+          <div class="prompt-tip">
+            &#x1F4A1; Quanto maior o prompt, maior o tempo de geração do resumo.
+          </div>
+
           <div class="prompt-actions">
             <button id="btnPreviewPrompt" class="btn-secondary">👁️ Preview</button>
             <button id="btnResetPrompt" class="btn-secondary">🔄 Restaurar Padrão</button>

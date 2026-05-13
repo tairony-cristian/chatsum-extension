@@ -60,6 +60,37 @@ const debugModeCheck = document.getElementById('debugMode');
 const btnFechar = document.getElementById('btnFechar');
 
 /**
+ * Atualiza contador de caracteres do prompt
+ */
+function atualizarContadorPrompt() {
+  const textarea = document.getElementById('promptCustom');
+  const counter  = document.getElementById('promptCharCounter');
+  const countEl  = document.getElementById('promptCharCount');
+  const warnEl   = document.getElementById('promptCharWarning');
+
+  if (!textarea || !countEl) return;
+
+  const total  = 10000;
+  const usado  = textarea.value.length;
+  const restam = total - usado;
+
+  countEl.textContent = usado.toLocaleString('pt-BR');
+
+  // Remove classes anteriores
+  counter.classList.remove('warning', 'danger');
+  warnEl.textContent = '';
+
+  if (usado > total) {
+    counter.classList.add('danger');
+    warnEl.textContent = `⛔ ${Math.abs(restam).toLocaleString('pt-BR')} acima do limite!`;
+  } else if (usado > total * 0.85) {
+    // Aviso a partir de 85% (8500 chars)
+    counter.classList.add('warning');
+    warnEl.textContent = `⚠️ ${restam.toLocaleString('pt-BR')} restantes`;
+  }
+}
+
+/**
  * Inicialização
  */
 (async function init() {
@@ -118,6 +149,7 @@ async function carregarConfiguracoes() {
   // ABA PROMPTS
   promptSelector.value = config.promptAtivo || 'default';
   promptCustomTextarea.value = config.promptPersonalizado || '';
+  atualizarContadorPrompt();
   
   if (config.promptAtivo === 'custom') {
     editorPrompt.style.display = 'block';
@@ -173,6 +205,11 @@ function registrarEventListeners() {
     editorPrompt.style.display = e.target.value === 'custom' ? 'block' : 'none';
   });
   
+  // Contador de caracteres em tempo real
+  if (promptCustomTextarea) {
+    promptCustomTextarea.addEventListener('input', atualizarContadorPrompt);
+  }
+
   btnPreviewPrompt.addEventListener('click', previewPrompt);
   btnResetPrompt.addEventListener('click', resetPrompt);
   btnValidarPrompt.addEventListener('click', validarPrompt);
@@ -326,7 +363,7 @@ async function testarConexao() {
     // 2. Fazer requisição
     const response = await fetch(`${urlServidor}/health`, {
       method: 'GET',
-      timeout: 5000
+      timeout: 10000
     });
     
     if (response.ok) {
@@ -481,8 +518,8 @@ function validarPrompt() {
     erros.push('Prompt muito curto (mínimo 50 caracteres)');
   }
   
-  if (prompt.length > 5000) {
-    erros.push('Prompt muito longo (máximo 5000 caracteres)');
+  if (prompt.length > 10000) {
+    erros.push('Prompt muito longo (máximo 10000 caracteres)');
   }
   
   // Mostra resultado
@@ -549,8 +586,8 @@ function validarPromptCustom(prompt) {
     return [false, 'Prompt muito curto (mínimo 50 caracteres)'];
   }
   
-  if (prompt.length > 5000) {
-    return [false, 'Prompt muito longo (máximo 5000 caracteres)'];
+  if (prompt.length > 10000) {
+    return [false, 'Prompt muito longo (máximo 10000 caracteres)'];
   }
   
   return [true, null];

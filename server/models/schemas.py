@@ -31,7 +31,7 @@ class ResumoRequest(BaseModel):
     
     promptCustom: Optional[str] = Field(
         default=None,
-        max_length=2000,
+        max_length=10000,
         description="Prompt personalizado (opcional)"
     )
     

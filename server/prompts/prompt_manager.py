@@ -132,7 +132,7 @@ O resumo gerado deve ser apenas o texto formatado.
         if len(prompt) < 50:
             return False, "Prompt muito curto (mínimo 50 caracteres)"
         
-        if len(prompt) > 5000:
-            return False, "Prompt muito longo (máximo 5000 caracteres)"
+        if len(prompt) > 10000:
+            return False, "Prompt muito longo (máximo 10000 caracteres)"
         
         return True, None
