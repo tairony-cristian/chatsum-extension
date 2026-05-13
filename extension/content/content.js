@@ -119,45 +119,44 @@ const PLATAFORMAS = {
       }
     },
     
-    // ⭐ FUNÇÃO AUXILIAR: Clicar em "Carregar mais"
+    // ⭐ FUNÇÃO AUXILIAR: Clicar em todos os botões "Carregar mais"
+    // Repete até não existir mais nenhum botão na página
     clicarEmCarregarMais: async function() {
-      return new Promise((resolve) => {
-        let tentativas = 0;
-        const intervalo = setInterval(() => {
-          tentativas++;
-          
-          // Timeout após 20 tentativas (~10 segundos)
-          if (tentativas > 20) {
-            log("⏳ Botão 'Carregar mais' não encontrado (timeout).");
-            clearInterval(intervalo);
-            resolve();
-            return;
-          }
-          
-          // Busca o botão "Carregar mais"
-          const xpath = "//button[contains(text(), 'Carregar mais')]";
-          const botao = document.evaluate(
-            xpath,
-            document,
-            null,
-            XPathResult.FIRST_ORDERED_NODE_TYPE,
-            null
-          ).singleNodeValue;
-          
-          // Verifica se botão existe e está visível
-          if (botao && botao.offsetParent !== null) {
-            log("🔘 Botão 'Carregar mais' encontrado, clicando...");
-            botao.click();
-            clearInterval(intervalo);
-            
-            // Aguarda carregamento das mensagens (2 segundos)
-            setTimeout(() => {
-              log("✅ Mensagens carregadas após clique.");
-              resolve();
-            }, 2000);
-          }
-        }, 500);
-      });
+      const AGUARDO_APOS_CLIQUE_MS = 3000; // Aguarda 3s após cada clique para carregar mensagens
+      const MAX_CLIQUES = 5;              // Limite de segurança (evita loop infinito)
+      let totalCliques = 0;
+
+      log("🔘 Iniciando cliques em 'Carregar mais'...");
+
+      while (totalCliques < MAX_CLIQUES) {
+        // Busca o botão "Carregar mais" visível
+        const xpath = "//button[contains(text(), 'Carregar mais')]";
+        const botao = document.evaluate(
+          xpath,
+          document,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE,
+          null
+        ).singleNodeValue;
+
+        // Se não encontrou botão visível, encerra o loop
+        if (!botao || botao.offsetParent === null) {
+          log(`✅ Nenhum botão 'Carregar mais' restante. Total de cliques: ${totalCliques}`);
+          break;
+        }
+
+        // Clica no botão e aguarda o carregamento
+        totalCliques++;
+        log(`🔘 Clique ${totalCliques}: carregando mais mensagens...`);
+        botao.click();
+
+        // Aguarda as mensagens carregarem antes de procurar o próximo botão
+        await new Promise(r => setTimeout(r, AGUARDO_APOS_CLIQUE_MS));
+      }
+
+      if (totalCliques >= MAX_CLIQUES) {
+        log(`⚠️ Limite de ${MAX_CLIQUES} cliques atingido.`);
+      }
     }
   },
   
