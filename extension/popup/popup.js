@@ -15,10 +15,32 @@ const resultadoPre = document.getElementById('resultado');
 const contadorDiv = document.getElementById('contador');
 
 // ============================================
+// ELEMENTOS DOM - HISTÓRICO
+// ============================================
+
+const tabResumir      = document.getElementById('tabResumir');
+const tabHistorico    = document.getElementById('tabHistorico');
+const abaResumir      = document.getElementById('abaResumir');
+const abaHistorico    = document.getElementById('abaHistorico');
+const historicoVazio  = document.getElementById('historicoVazio');
+const historicoCont   = document.getElementById('historicoConteudo');
+const historicoIndice = document.getElementById('historicoIndice');
+const btnHistAnt      = document.getElementById('btnHistAnterior');
+const btnHistProx     = document.getElementById('btnHistProximo');
+const histRazaoSocial = document.getElementById('histRazaoSocial');
+const histTicket      = document.getElementById('histTicket');
+const histIA          = document.getElementById('histIA');
+const histHora        = document.getElementById('histHora');
+const histResumo      = document.getElementById('histResumo');
+const btnCopiarHist   = document.getElementById('btnCopiarHist');
+
+// ============================================
 // ESTADO GLOBAL DO POPUP
 // ============================================
 
 let ultimoResumoTimestamp = null;
+let historicoAtual = [];   // Array com os últimos 10 resumos
+let indiceHist = 0;        // Índice do resumo sendo visualizado (0 = mais recente)
 let countdownInterval = null;  // Controla o timer regressivo
 let providersCache = null;     // Cache de provedores configurados
 
@@ -78,7 +100,7 @@ async function incrementarContador() {
 
 function formatarResumo(resumo) {
     let html = resumo
-        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+        .replace(/\*\*(.*?)\*\*/gs, '<b>$1</b>')
         .replace(/\n/g, '<br>');
 
     html = html
@@ -395,6 +417,96 @@ function verificarProviderSelecionado(provider) {
 }
 
 // ============================================
+// HISTÓRICO DE RESUMOS
+// ============================================
+
+const MAX_HISTORICO = 10;
+
+/**
+ * Salva novo resumo no histórico (máximo 10, mais recente primeiro)
+ */
+async function salvarNoHistorico(resumoHtml, resumoOriginal, ticket) {
+    const agora = new Date();
+    const item = {
+        resumoHtml,
+        resumoOriginal,
+        razaoSocial: ticket?.razaoSocial || '',
+        numero: ticket?.numero || '',
+        iaUsada: ticket?.iaUsada || 'gemini',
+        hora: agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        data: agora.toLocaleDateString('pt-BR'),
+        timestamp: agora.toISOString()
+    };
+
+    const data = await chrome.storage.local.get('historicoResumos');
+    let hist = data.historicoResumos || [];
+
+    // Adiciona no início (mais recente primeiro) e limita a 10
+    hist.unshift(item);
+    if (hist.length > MAX_HISTORICO) hist = hist.slice(0, MAX_HISTORICO);
+
+    await chrome.storage.local.set({ historicoResumos: hist });
+    historicoAtual = hist;
+    console.log(`[Histórico] Salvo. Total: ${hist.length}`);
+}
+
+/**
+ * Carrega histórico do storage
+ */
+async function carregarHistorico() {
+    const data = await chrome.storage.local.get('historicoResumos');
+    historicoAtual = data.historicoResumos || [];
+    indiceHist = 0;
+}
+
+/**
+ * Renderiza o item atual do histórico na aba
+ */
+function renderizarHistorico() {
+    if (historicoAtual.length === 0) {
+        historicoVazio.style.display = 'block';
+        historicoCont.style.display = 'none';
+        return;
+    }
+
+    historicoVazio.style.display = 'none';
+    historicoCont.style.display = 'block';
+
+    const item = historicoAtual[indiceHist];
+    const total = historicoAtual.length;
+
+    // Índice (ex: 1 / 5)
+    historicoIndice.textContent = `${indiceHist + 1} / ${total}`;
+
+    // Navegação
+    btnHistAnt.disabled = indiceHist <= 0;
+    btnHistProx.disabled = indiceHist >= total - 1;
+
+    // Metadados
+    histRazaoSocial.textContent = item.razaoSocial || '—';
+    histTicket.textContent = item.numero ? `#${item.numero}` : '—';
+    histIA.textContent = { gemini: '✨ Gemini', groq: '⚡ Groq', openai: '🧠 GPT' }[item.iaUsada] || item.iaUsada;
+    histHora.textContent = `${item.data} ${item.hora}`;
+
+    // Resumo — re-aplica formatação a partir do texto original
+    // Garante que o HTML completo seja renderizado mesmo que o resumoHtml salvo esteja incompleto
+    if (item.resumoOriginal) {
+        histResumo.innerHTML = formatarResumo(item.resumoOriginal);
+    } else {
+        histResumo.innerHTML = item.resumoHtml || '';
+    }
+}
+
+/**
+ * Atualiza campo editável do histórico e salva no storage
+ */
+async function editarCampoHistorico(campo, valor) {
+    if (historicoAtual.length === 0) return;
+    historicoAtual[indiceHist][campo] = valor;
+    await chrome.storage.local.set({ historicoResumos: historicoAtual });
+}
+
+// ============================================
 // EVENTO: MUDANÇA DE MODO
 // ============================================
 
@@ -424,6 +536,84 @@ if (selectIa) {
 
 btnConfig.addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
+});
+
+// ============================================
+// EVENTOS: ABAS E HISTÓRICO
+// ============================================
+
+// Troca de aba
+[tabResumir, tabHistorico].forEach(tab => {
+    tab.addEventListener('click', () => {
+        const isHistorico = tab.dataset.tab === 'historico';
+        tabResumir.classList.toggle('active', !isHistorico);
+        tabHistorico.classList.toggle('active', isHistorico);
+        abaResumir.classList.toggle('active', !isHistorico);
+        abaHistorico.classList.toggle('active', isHistorico);
+        if (isHistorico) renderizarHistorico();
+    });
+});
+
+// Navegação ◀ ▶
+btnHistAnt.addEventListener('click', () => {
+    if (indiceHist > 0) { indiceHist--; renderizarHistorico(); }
+});
+btnHistProx.addEventListener('click', () => {
+    if (indiceHist < historicoAtual.length - 1) { indiceHist++; renderizarHistorico(); }
+});
+
+// Edição inline — razão social
+histRazaoSocial.addEventListener('click', () => {
+    const atual = histRazaoSocial.textContent === '—' ? '' : histRazaoSocial.textContent;
+    const novo = prompt('Editar razão social:', atual);
+    if (novo !== null) {
+        histRazaoSocial.textContent = novo || '—';
+        editarCampoHistorico('razaoSocial', novo);
+    }
+});
+
+// Edição inline — ticket
+histTicket.addEventListener('click', () => {
+    const atual = histTicket.textContent.replace('#', '').trim();
+    const novo = prompt('Editar número do ticket:', atual === '—' ? '' : atual);
+    if (novo !== null) {
+        histTicket.textContent = novo ? `#${novo}` : '—';
+        editarCampoHistorico('numero', novo);
+    }
+});
+
+// Copiar resumo do histórico
+btnCopiarHist.addEventListener('click', async () => {
+    if (historicoAtual.length === 0) return;
+    const item = historicoAtual[indiceHist];
+
+    // Usa resumoOriginal (markdown completo) para texto limpo
+    // e resumoHtml para formato rico
+    const textoLimpo = item.resumoOriginal || '';
+    const htmlCompleto = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;font-size:13px;color:#333;line-height:1.6;">
+${item.resumoHtml || ''}
+</body></html>`.trim();
+
+    try {
+        const blob = new Blob([htmlCompleto], { type: 'text/html' });
+        const textBlob = new Blob([textoLimpo], { type: 'text/plain' });
+        await navigator.clipboard.write([
+            new ClipboardItem({ 'text/html': blob, 'text/plain': textBlob })
+        ]);
+    } catch {
+        // Fallback: copia texto limpo
+        try {
+            await navigator.clipboard.writeText(textoLimpo);
+        } catch (err) {
+            console.error('[Histórico] Erro ao copiar:', err);
+            return;
+        }
+    }
+
+    const original = btnCopiarHist.textContent;
+    btnCopiarHist.textContent = '✅ Copiado!';
+    setTimeout(() => { btnCopiarHist.textContent = original; }, 2000);
 });
 
 // ============================================
@@ -552,16 +742,22 @@ btnCapturar.addEventListener('click', async () => {
                             timestampResumo: result.timestamp || agora,
                             ultimoTecnico: result.ultimoTecnico || response.ultimoTecnico || '',
                             modoResumo: modo,
-                            // Limpar backups em progresso após sucesso
+                            // Limpa backups em progresso após sucesso
                             chatEmProcessamento: null,
                             ultimoTecnicoEmProcessamento: null,
                             modoEmProcessamento: null,
                             timestampProcessamento: null
                         });
 
-                        // Rastrear timestamp para validação
                         ultimoResumoTimestamp = result.timestamp || agora;
                         console.log('[ChatSum] Resumo salvo com sucesso no storage');
+
+                        // Salva no histórico
+                        await salvarNoHistorico(htmlFormatado, result.resumo, {
+                            razaoSocial: response.ticket?.razaoSocial || '',
+                            numero: response.ticket?.numero || '',
+                            iaUsada: iaUsada
+                        });
 
                         // Auto-copiar se configurado
                         if (config.autoCopiar) {
@@ -632,37 +828,23 @@ btnApagar.addEventListener('click', async () => {
     await carregarModoResumo();
     await atualizarContador();
     await carregarProviders();
+    await carregarHistorico();
     if (selectIa) verificarProviderSelecionado(selectIa.value);
 
-    // Primeiro, tenta carregar resumo principal
     const dados = await chrome.storage.local.get([
-        'ultimoResumo',
-        'ultimoResumoOriginal',
-        'timestampResumo',
         'chatEmProcessamento',
         'ultimoTecnicoEmProcessamento',
         'modoEmProcessamento',
         'timestampProcessamento'
     ]);
 
-    console.log('[ChatSum] Dados recuperados do storage:', {
-        temResumo: !!dados.ultimoResumo,
-        temBackupChat: !!dados.chatEmProcessamento,
-        temTimestamp: !!dados.timestampResumo
-    });
+    console.log('[ChatSum] Verificando chat em processamento:', !!dados.chatEmProcessamento);
 
-    // PRIORIDADE 1: Resumo completo disponível
-    if (dados.ultimoResumo) {
-        console.log('[ChatSum] Carregando resumo principal');
-        resultadoPre.innerHTML = dados.ultimoResumo;
-        btnCapturar.style.display = 'none';
-        btnCopiar.style.display = 'inline-block';
-        btnApagar.style.display = 'inline-block';
-        setStatus('✅ Último resumo carregado', 'ok');
-        ultimoResumoTimestamp = dados.timestampResumo;
-    }
+    // PRIORIDADE 1: Aba Resumir sempre começa limpa — histórico fica na aba Histórico
+    setStatus('Aguardando ação...', 'info');
+
     // PRIORIDADE 2: Chat em processamento (fallback)
-    else if (dados.chatEmProcessamento) {
+    if (dados.chatEmProcessamento) {
         console.log('[ChatSum] Recuperando chat em processamento (fallback)');
         resultadoPre.innerHTML = `
             <div style="padding: 15px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; color: #856404;">
@@ -699,7 +881,6 @@ btnApagar.addEventListener('click', async () => {
                     btnApagar.style.display = 'inline-block';
                     setStatus('✅ Resumo recuperado do servidor!', 'ok');
 
-                    // Salvar no storage
                     await chrome.storage.local.set({
                         ultimoResumo: htmlFormatado,
                         ultimoResumoOriginal: result.resumo,
@@ -715,10 +896,9 @@ btnApagar.addEventListener('click', async () => {
             }
         }, 5000);
     }
-    // PRIORIDADE 3: Nada salvo
+    // PRIORIDADE 3: Nada pendente
     else {
-        console.log('[ChatSum] Nenhum resumo encontrado, aguardando ação');
-        setStatus('Aguardando ação...', 'info');
+        console.log('[ChatSum] Nenhum chat em processamento');
     }
 
     console.log('[ChatSum] Inicialização completa');

@@ -9,7 +9,7 @@
       padding: 5px;
       background: #fff;
       color: #222;
-      width: 320px;
+      width: 360px;
       user-select: none;
     }
 
@@ -120,6 +120,130 @@
       box-shadow: none;
     }
 
+    /* Abas — sobrescreve o estilo base do button */
+    .popup-tabs {
+      display: flex;
+      border-bottom: 2px solid #ddd;
+      margin-bottom: 10px;
+    }
+
+    .popup-tabs .popup-tab {
+      flex: 1;
+      padding: 7px 4px;
+      background-color: transparent;
+      color: #888;
+      border: none;
+      border-bottom: 2px solid transparent;
+      border-radius: 0;
+      margin-bottom: -2px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: none;
+      width: auto;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .popup-tabs .popup-tab:hover:not(:disabled) {
+      background-color: #fff5f5;
+      color: #cc0000;
+    }
+
+    .popup-tabs .popup-tab.active {
+      background-color: transparent;
+      color: #cc0000;
+      border-bottom-color: #cc0000;
+    }
+
+    /* Botões de navegação do histórico */
+    .btn-nav {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      margin: 0;
+      background-color: #f0f0f0;
+      color: #444;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: none;
+      cursor: pointer;
+    }
+
+    .btn-nav:hover:not(:disabled) {
+      background-color: #cc0000;
+      color: white;
+    }
+
+    .btn-nav:disabled {
+      background-color: #f0f0f0;
+      color: #bbb;
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Botão copiar do histórico */
+    .btn-copiar-hist {
+      background-color: #555;
+      font-size: 12px;
+      margin-top: 0;
+    }
+
+    .btn-copiar-hist:hover:not(:disabled) {
+      background-color: #333;
+    }
+
+    /* Conteúdo das abas */
+    .aba-content { display: none; }
+    .aba-content.active { display: block; }
+
+    /* Histórico — área de leitura do resumo */
+    .historico-resumo {
+      max-height: 380px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #222;
+      background: #fff;
+      margin-bottom: 8px;
+      white-space: pre-wrap;
+      user-select: text;
+    }
+
+    .historico-resumo::-webkit-scrollbar { width: 6px; }
+    .historico-resumo::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+    .historico-resumo::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+
+    /* Metadados */
+    .historico-meta {
+      background: #f9f9f9;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      padding: 7px 10px;
+      margin-bottom: 8px;
+      font-size: 11px;
+    }
+
+    .meta-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 2px;
+      align-items: baseline;
+    }
+
+    .meta-label { color: #888; flex-shrink: 0; }
+    .meta-value { color: #333; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .meta-editavel { cursor: pointer; border-bottom: 1px dashed #ccc; }
+    .meta-editavel:hover { color: #cc0000; border-bottom-color: #cc0000; }
+
+    .historico-indice { font-size: 12px; font-weight: 700; color: #555; min-width: 40px; text-align: center; }
+    .historico-nav { display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 8px; }
+    .historico-vazio { text-align: center; color: #aaa; font-size: 13px; padding: 30px 10px; }
+
     #copiarResumo, #apagarResumo {
       display: none;
       background-color: #888;
@@ -198,12 +322,56 @@
     </div>
   </div>
 
-  <button id="resumir">🔍 Capturar e Resumir</button>
-  <button id="copiarResumo">📋 Copiar com Formatação</button>
-  <button id="apagarResumo">🗑️ Limpar</button>
+  <!-- Abas de navegação -->
+  <div class="popup-tabs">
+    <button class="popup-tab active" id="tabResumir" data-tab="resumir">&#x1F4CB; Resumir</button>
+    <button class="popup-tab" id="tabHistorico" data-tab="historico">&#x1F4DC; Hist&#x00F3;rico</button>
+  </div>
 
-  <div id="status" class="status-info">⌛ Aguardando ação...</div>
-  <div id="resultado"></div>
+  <!-- ABA: RESUMIR -->
+  <div id="abaResumir" class="aba-content active">
+    <button id="resumir">&#x1F50D; Capturar e Resumir</button>
+    <button id="copiarResumo">&#x1F4CB; Copiar com Formata&#x00E7;&#x00E3;o</button>
+    <button id="apagarResumo">&#x1F5D1;&#xFE0F; Limpar</button>
+    <div id="status" class="status-info">&#x231B; Aguardando a&#x00E7;&#x00E3;o...</div>
+    <div id="resultado"></div>
+  </div><!-- /abaResumir -->
+
+  <!-- ABA: HISTÓRICO -->
+  <div id="abaHistorico" class="aba-content">
+    <div id="historicoVazio" class="historico-vazio">
+      &#x1F4DC; Nenhum resumo no hist&#x00F3;rico ainda.
+    </div>
+    <div id="historicoConteudo" style="display:none;">
+      <div class="historico-header">
+        <div class="historico-nav">
+          <button id="btnHistAnterior" class="btn-nav" title="Anterior">&#x25C4;</button>
+          <span id="historicoIndice" class="historico-indice">1 / 1</span>
+          <button id="btnHistProximo" class="btn-nav" title="Pr&#x00F3;ximo">&#x25BA;</button>
+        </div>
+      </div>
+      <div class="historico-meta">
+        <div class="meta-row">
+          <span class="meta-label">&#x1F3E2;</span>
+          <span id="histRazaoSocial" class="meta-value meta-editavel" title="Clique para editar">&#x2014;</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">&#x1F3AB; Ticket:</span>
+          <span id="histTicket" class="meta-value meta-editavel" title="Clique para editar">&#x2014;</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">&#x1F916; IA:</span>
+          <span id="histIA" class="meta-value">&#x2014;</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">&#x1F552; Hora:</span>
+          <span id="histHora" class="meta-value">&#x2014;</span>
+        </div>
+      </div>
+      <div id="histResumo" class="historico-resumo"></div>
+      <button id="btnCopiarHist" class="btn-copiar-hist">&#x1F4CB; Copiar Resumo</button>
+    </div>
+  </div><!-- /abaHistorico -->
 
   <script src="popup.js"></script>
 </body>

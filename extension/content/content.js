@@ -27,27 +27,32 @@ const PLATAFORMAS = {
       try {
         log('🔍 Iniciando captura específica do Movidesk...');
         
-        // ETAPA 1: Clicar em "Carregar mais" (aguarda todas as mensagens)
-        await this.clicarEmCarregarMais();
-        
-        // ETAPA 2: Validar aba ativa
+        // ETAPA 1: Clicar em todos os "Carregar mais" até não restar nenhum
+        await this.clicarEmCarregarMaisLoop();
+
+        // ETAPA 2: Identificar aba ativa
         const abaAtiva = document.querySelector("li.tab-li.active");
         if (!abaAtiva) {
           throw new Error('Aba ativa não encontrada. Certifique-se de estar em uma conversa.');
         }
-        
+
         log(`✅ Aba ativa encontrada: ${abaAtiva.id}`);
-        
+
         // ETAPA 3: Obter conteúdo da aba ativa
         const idAba = abaAtiva.id;
         const idConteudo = idAba.replace("tab", "tab-pane");
         const divConteudo = document.querySelector(`#${idConteudo}`);
-        
+
         if (!divConteudo) {
           throw new Error('Conteúdo do chat não encontrado na aba ativa.');
         }
+
+        // ETAPA 4: Extrair dados do ticket a partir da aba ativa
+        // Passa divConteudo para buscar ticket/razão social dentro da conversa correta
+        const dadosTicket = this.extrairDadosTicket(abaAtiva, divConteudo);
+        log(`🎫 Ticket: ${dadosTicket.numero} | Cliente: ${dadosTicket.razaoSocial}`);
         
-        // ETAPA 4: Extrair mensagens
+        // ETAPA 5: Extrair mensagens
         const containers = divConteudo.querySelectorAll(
           ".message-container.sended, .message-container.received, .message-container.systemMessage"
         );
@@ -58,7 +63,7 @@ const PLATAFORMAS = {
         
         log(`📨 ${containers.length} mensagens encontradas`);
         
-        // ETAPA 5: Processar mensagens e identificar técnicos
+        // ETAPA 6: Processar mensagens e identificar técnicos
         const mensagens = [];
         const tecnicosChat = [];
         
@@ -89,7 +94,7 @@ const PLATAFORMAS = {
           });
         });
         
-        // ETAPA 6: Formatar resultado
+        // ETAPA 7: Formatar resultado
         const ultimoTecnico = tecnicosChat.length > 0 
           ? tecnicosChat[tecnicosChat.length - 1]
           : "";
@@ -105,6 +110,7 @@ const PLATAFORMAS = {
           success: true,
           chat: chatFormatado,
           ultimoTecnico: ultimoTecnico,
+          ticket: dadosTicket,
           metadata: {
             plataforma: this.nome,
             totalMensagens: mensagens.length,
@@ -119,44 +125,216 @@ const PLATAFORMAS = {
       }
     },
     
+    // ⭐ FUNÇÃO AUXILIAR: Extrai número do ticket e razão social
+// Usa a aba ativa (li.tab-li.active) como âncora para garantir dados corretos
+extrairDadosTicket: function(abaAtiva, divConteudo) {
+
+  // ─────────────────────────────────────────
+  // NÚMERO DO TICKET
+  // ─────────────────────────────────────────
+  let numero = '';
+
+  // Fonte 1: id da aba ativa
+  // Exemplo: id="tab1271186"
+  if (abaAtiva) {
+    const idMatch = abaAtiva.id.match(/^tab(\d+)$/);
+
+    if (idMatch) {
+      numero = idMatch[1];
+    }
+  }
+
+  // Fonte 2: data-tab-group
+  if (!numero && abaAtiva) {
+
+    const link = abaAtiva.querySelector('a[data-tab-group]');
+
+    if (link) {
+      numero = link.dataset.tabGroup || '';
+    }
+  }
+
+  // Fonte 3: mensagem automática do chat
+  if (!numero && divConteudo) {
+
+    const walker = document.createTreeWalker(
+      divConteudo,
+      NodeFilter.SHOW_TEXT
+    );
+
+    let node;
+
+    while ((node = walker.nextNode())) {
+
+      const match = node.textContent.match(
+        /Esta conversa vai gerar o ticket\s+(\d+)/i
+      );
+
+      if (match) {
+        numero = match[1];
+        break;
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────
+  // RAZÃO SOCIAL
+  // ─────────────────────────────────────────
+  let razaoSocial = '';
+
+  // =========================================================
+  // FONTE 1 (PRIORIDADE MÁXIMA)
+  // span.md-select-client-name
+  // =========================================================
+  if (divConteudo) {
+
+    const el = divConteudo.querySelector(
+      'span.md-select-client-name'
+    );
+
+    if (el) {
+
+      const texto = el.textContent?.trim();
+
+      if (
+        texto &&
+        texto.length > 2 &&
+        texto !== 'Tairony Cristian'
+      ) {
+        razaoSocial = texto;
+      }
+    }
+  }
+
+  // =========================================================
+  // FONTE 2
+  // breadcrumb do ticket ativo
+  // =========================================================
+  if (!razaoSocial && numero) {
+
+    const ticketLi = document.querySelector(
+      `ol.ticket-breadcrumb li.ticket[data-id="${numero}"]`
+    );
+
+    if (ticketLi) {
+
+      const ol = ticketLi.closest('ol');
+
+      const clientSpan = ol?.querySelector(
+        'li.client span.breadcrumb-item'
+      );
+
+      if (clientSpan) {
+
+        const clone = clientSpan.cloneNode(true);
+
+        // Remove ícones
+        clone.querySelectorAll('i').forEach(i => i.remove());
+
+        const texto = clone.textContent?.trim();
+
+        if (
+          texto &&
+          texto.length > 2 &&
+          !/^\d+$/.test(texto)
+        ) {
+          razaoSocial = texto;
+        }
+      }
+    }
+  }
+
+  // =========================================================
+  // FONTE 3
+  // createdBy.action-email-popover-active
+  // =========================================================
+  if (!razaoSocial && divConteudo) {
+
+    const el = divConteudo.querySelector(
+      '.createdBy.action-email-popover-active'
+    );
+
+    if (el) {
+
+      const texto = el.textContent?.trim();
+
+      if (
+        texto &&
+        texto.length > 2 &&
+        texto !== 'Tairony Cristian' &&
+        !texto.includes('@')
+      ) {
+        razaoSocial = texto;
+      }
+    }
+  }
+
+  // =========================================================
+  // FONTE 4
+  // Qualquer "user" que esteja em MAIÚSCULO
+  // =========================================================
+  if (!razaoSocial && divConteudo) {
+
+    const users = divConteudo.querySelectorAll('.user');
+
+    for (const user of users) {
+
+      const texto = user.textContent?.trim();
+
+      if (
+        texto &&
+        texto === texto.toUpperCase() &&
+        texto.length > 5
+      ) {
+        razaoSocial = texto;
+        break;
+      }
+    }
+  }
+
+  // =========================================================
+  // FALLBACK FINAL
+  // =========================================================
+  if (!razaoSocial) {
+    razaoSocial = 'Cliente não identificado';
+  }
+
+  log(`🎫 Ticket: #${numero} | Cliente: ${razaoSocial}`);
+
+  return {
+    numero,
+    razaoSocial
+  };
+},
+
     // ⭐ FUNÇÃO AUXILIAR: Clicar em todos os botões "Carregar mais"
-    // Repete até não existir mais nenhum botão na página
     clicarEmCarregarMais: async function() {
-      const AGUARDO_APOS_CLIQUE_MS = 3000; // Aguarda 3s após cada clique para carregar mensagens
-      const MAX_CLIQUES = 5;              // Limite de segurança (evita loop infinito)
+      return new Promise((resolve) => {
+        resolve(); // resolve imediatamente, o loop é async abaixo
+      });
+    },
+
+    // ⭐ LOOP REAL: Clica em todos os botões "Carregar mais" até não restar nenhum
+    clicarEmCarregarMaisLoop: async function() {
+      const AGUARDO_MS = 3000;
+      const MAX_CLIQUES = 30;
       let totalCliques = 0;
 
-      log("🔘 Iniciando cliques em 'Carregar mais'...");
-
       while (totalCliques < MAX_CLIQUES) {
-        // Busca o botão "Carregar mais" visível
         const xpath = "//button[contains(text(), 'Carregar mais')]";
-        const botao = document.evaluate(
-          xpath,
-          document,
-          null,
-          XPathResult.FIRST_ORDERED_NODE_TYPE,
-          null
-        ).singleNodeValue;
+        const botao = document.evaluate(xpath, document, null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
 
-        // Se não encontrou botão visível, encerra o loop
         if (!botao || botao.offsetParent === null) {
-          log(`✅ Nenhum botão 'Carregar mais' restante. Total de cliques: ${totalCliques}`);
+          log(`✅ Sem mais botões 'Carregar mais'. Cliques: ${totalCliques}`);
           break;
         }
-
-        // Clica no botão e aguarda o carregamento
         totalCliques++;
-        log(`🔘 Clique ${totalCliques}: carregando mais mensagens...`);
+        log(`🔘 Clique ${totalCliques} em 'Carregar mais'...`);
         botao.click();
-
-        // Aguarda as mensagens carregarem antes de procurar o próximo botão
-        await new Promise(r => setTimeout(r, AGUARDO_APOS_CLIQUE_MS));
+        await new Promise(r => setTimeout(r, AGUARDO_MS));
       }
-
-      if (totalCliques >= MAX_CLIQUES) {
-        log(`⚠️ Limite de ${MAX_CLIQUES} cliques atingido.`);
-      }
+      if (totalCliques >= MAX_CLIQUES) log(`⚠️ Limite de ${MAX_CLIQUES} cliques atingido.`);
     }
   },
   
