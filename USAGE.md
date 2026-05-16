@@ -1,466 +1,279 @@
-# 📖 Guia de Uso - ChatSum
-
-Aprenda a usar todas as funcionalidades do ChatSum de forma eficiente.
-
-## 📋 **Índice**
-
-1. [Uso Básico](#uso-básico)
-2. [Modos de Resumo](#modos-de-resumo)
-3. [Prompts Personalizados](#prompts-personalizados)
-4. [Dicas e Truques](#dicas-e-truques)
-5. [Casos de Uso](#casos-de-uso)
-6. [Atalhos](#atalhos)
+# 📖 Guia de Uso — ChatSum
 
 ---
 
-## 🚀 **Uso Básico**
+## 📋 Índice
 
-### **Passo a Passo: Primeiro Resumo**
-
-#### **1. Abra uma conversa de suporte**
-
-Navegue até qualquer plataforma de atendimento:
-- Sistema de tickets (Zendesk, Freshdesk, etc)
-- WhatsApp Web
-- Chat interno da empresa
-- Qualquer página com histórico de mensagens
-
-#### **2. Abra o ChatSum**
-
-Clique no ícone 📋 do ChatSum na barra de ferramentas do Chrome.
-
-#### **3. Configure o modo (opcional)**
-
-Por padrão, o modo **"Último Técnico"** está selecionado.
-- ✅ **Último Técnico**: Resume apenas suas ações (recomendado para documentar)
-- ⭕ **Completo**: Resume ações de todos os técnicos
-
-#### **4. Capture o chat**
-
-Clique no botão **"🔍 Capturar e Resumir"**
-
-**O que acontece:**
-```
-⏳ Capturando chat...        (2-3 segundos)
-    ↓
-✅ Chat capturado!           (Pode fechar a janela)
-    ↓
-🤖 IA gerando resumo...      (5-10 segundos)
-    ↓
-✅ Resumo pronto!            (Notificação aparece)
-```
-
-#### **5. Use o resumo**
-
-- **📋 Copiar**: Copia com formatação HTML (cola formatado no CRM)
-- **🗑️ Limpar**: Remove o resumo e libera para novo
-- **👁️ Visualizar**: Veja o resumo formatado na extensão
+1. [Visão Geral do Popup](#-visão-geral-do-popup)
+2. [Gerar um Resumo](#-gerar-um-resumo)
+3. [Aba Histórico](#-aba-histórico)
+4. [Seletor de IA](#-seletor-de-ia)
+5. [Modos de Resumo](#-modos-de-resumo)
+6. [Prompts Personalizados](#-prompts-personalizados)
+7. [Configurações](#-configurações)
+8. [Dicas de Uso](#-dicas-de-uso)
 
 ---
 
-## 🎯 **Modos de Resumo**
+## 🖼️ Visão Geral do Popup
 
-### **Modo 1: Último Técnico** (Padrão)
+<p align="left"> <img src="docs/images/configuracao/extensao.png" width="500"> </p>
 
-**Quando usar:**
-- ✅ Documentar ticket após atendimento
-- ✅ Registrar suas ações no CRM
-- ✅ Relatório individual de atendimento
+---
+
+## 🚀 Gerar um Resumo
+
+### Passo a passo
+
+**1.** Abra um ticket no Movidesk e deixe a conversa carregada na tela.
+
+**2.** Clique no ícone 📋 do ChatSum na barra do Chrome.
+
+**3.** Escolha o **Modo de Resumo** e o **Provedor de IA** desejados.
+
+**4.** Clique em **"🔍 Capturar e Resumir"**.
+
+**5.** Aguarde. O status mostrará o progresso:
+```
+⏳ Capturando chat...
+⏳ Chat capturado! Enviando para IA...
+✅ Resumo gerado com sucesso via Gemini!
+```
+
+**6.** Com o resumo na tela, clique em **"📋 Copiar com Formatação"** e cole no seu sistema de chamados.
+
+### O que acontece durante a captura
+
+- A extensão clica automaticamente em todos os botões **"Carregar mais"** do chat (aguardando 3 segundos por clique)
+- Captura o número do ticket e a razão social do cliente automaticamente
+- Envia o chat para o servidor de IA
+- Salva o resultado no **Histórico** automaticamente
+
+### Se o popup for fechado durante o processamento
+
+Não há problema. Na próxima vez que abrir a extensão, ela detectará que há um processamento em andamento e tentará recuperar o resumo do servidor automaticamente após 5 segundos.
+
+---
+
+## 📜 Aba Histórico
+
+O histórico salva automaticamente os **últimos 10 resumos** gerados, persistindo entre sessões mesmo após fechar o Chrome.
+
+### Como usar
+
+1. Clique na aba **📜 Histórico** no topo do popup
+2. Use os botões **◀ ▶** para navegar entre os resumos
+3. O índice **"1 / 5"** mostra qual resumo está sendo exibido (1 = mais recente)
+
+### Informações exibidas por resumo
+
+| Campo | Descrição |
+|---|---|
+| 🏢 Razão Social | Nome do cliente (extraído automaticamente) |
+| 🎫 Ticket | Número do ticket (extraído automaticamente) |
+| 🤖 IA | Provedor de IA que gerou o resumo |
+| 🕒 Hora | Data e hora da geração |
+<p align="left"> <img src="docs/images/configuracao/extensao-historico.png" width="500"> </p>
+
+### Editar razão social ou ticket
+
+Se a extração automática pegou dados incorretos, clique diretamente no campo — uma caixa de edição será aberta para corrigir.
+
+### Copiar resumo do histórico
+
+Clique em **"📋 Copiar Resumo"** para copiar o conteúdo do item que está sendo visualizado.
+
+---
+
+## 🤖 Seletor de IA
+
+O seletor de IA fica no topo do popup ao lado do modo de resumo.
+
+| Opção | Provedor | Característica |
+|---|---|---|
+| ✨ Gemini | Google | Padrão, boa qualidade |
+| ⚡ Groq | Groq | Muito rápido |
+| 🧠 GPT | OpenAI | Alta qualidade, pago |
+
+### Fallback automático
+
+Se o provedor selecionado estiver indisponível (ex: limite de quota atingido ou servidor fora), o sistema tenta automaticamente o próximo disponível e informa:
+
+```
+⚠️ Resumo gerado via Groq (fallback — Gemini indisponível)
+```
+
+### Limites de quota (plano gratuito)
+
+| Provedor | Limite diário |
+|---|---|
+| Gemini | ~20 requisições |
+| Groq | Generoso (varia) |
+| OpenAI | Conforme créditos |
+
+---
+
+## 🎯 Modos de Resumo
+
+### Último Técnico (padrão)
+
+Resume **apenas as ações do técnico que está logado**, ignorando outros técnicos.
+
+**Use quando:** documentar o seu atendimento no ticket.
 
 **Exemplo de saída:**
-```markdown
+```
 🔴 PROBLEMA RELATADO:
-* Cliente reportou erro ao finalizar venda no módulo de **PDV**
-* Mensagem exibida: **"Falha ao processar pagamento"**
-* Impacto: **Processo bloqueado**, impossível concluir vendas
+* Cliente relatou erro ao emitir NFC-e no PDV 03.
+* Mensagem de erro: "Rejeição 252 - Documento duplicado".
 
 🟡 ANÁLISE TÉCNICA:
-* Acessei o **banco de dados** e verifiquei logs da transação
-* Identifiquei **configuração incorreta** no gateway de pagamento
-* Causa Raiz: Parâmetro **merchant_id** estava desatualizado
+* Acessei o servidor via acesso remoto e verifiquei os XML pendentes.
+* Identifiquei divergências nos registros do PDV 03.
 
 🟢 SOLUÇÃO APRESENTADA:
-* Atualizei configuração do **gateway** via query SQL
-* Orientei cliente a testar nova venda
-* Cliente confirmou funcionamento
-* **Ticket Finalizado.**
+* Recriei os XML faltantes no PDV 03.
+* Abri os supervisores de venda e consulta no servidor.
+* Cliente confirmou o funcionamento.
+* Ticket Finalizado.
 ```
 
-### **Modo 2: Completo**
+### Completo
 
-**Quando usar:**
-- ✅ Handover (passar atendimento para outro técnico)
-- ✅ Relatórios gerenciais
-- ✅ Análise de qualidade de atendimento
-- ✅ Documentação de casos complexos
+Resume **todos os técnicos** que participaram do atendimento.
 
-**Exemplo de saída:**
-```markdown
-🔴 PROBLEMA:
-Cliente reportou lentidão no sistema após atualização
-
-🟡 HISTÓRICO DE ATENDIMENTO:
-
-**Técnico Maria Santos:**
-* Verificou logs do servidor
-* Identificou alto uso de CPU
-* Escalou para equipe de infraestrutura
-
-**Técnico João Silva:**
-* Analisou queries do banco de dados
-* Encontrou índice faltante na tabela vendas
-* Criou índice otimizado
-* Aplicou script de correção
-
-🟢 SOLUÇÃO FINAL:
-* Performance restaurada após criação de índices
-* Cliente confirmou melhora significativa
-* **Ticket Finalizado.**
-```
+**Use quando:** fazer handover para outro técnico ou documentar atendimentos em equipe.
 
 ---
 
-## 📝 **Prompts Personalizados**
+## 📝 Prompts Personalizados
 
-### **Acessando o Editor**
+### Acessar o editor
 
-1. Clique em **⚙️ Configurações**
-2. Vá para aba **📝 Prompts**
-3. Selecione **"Personalizado"** no dropdown
-4. O editor será exibido
+1. Clique em ⚙️ → aba **Prompts**
+2. No dropdown, selecione **"Personalizado"**
+3. O editor será exibido
 
-### **Estrutura de um Prompt**
-```markdown
-Aja como um [PAPEL].
+### Contador de caracteres
 
-**INSTRUÇÕES:**
-1. [Instrução 1]
-2. [Instrução 2]
-3. [Instrução 3]
+O editor mostra em tempo real quantos caracteres o prompt tem:
 
-**SEÇÕES:**
-
-**TÍTULO 1:**
-[Descrição do que deve conter]
-
-**TÍTULO 2:**
-[Descrição do que deve conter]
-
-Use a variável {ultimo_tecnico} para mencionar o técnico.
+```
+3.950 / 10.000 caracteres
+💡 Quanto maior o prompt, maior o tempo de geração do resumo.
 ```
 
-### **Variáveis Disponíveis**
+- **Normal:** contador cinza
+- **⚠️ Aviso (85%):** contador laranja — `⚠️ 1.500 restantes`
+- **🚫 Limite (100%):** contador vermelho — `⛔ 22 acima do limite!`
 
-| Variável | Descrição | Exemplo |
-|----------|-----------|---------|
-| `{ultimo_tecnico}` | Nome do último técnico | João Silva |
-| `{data}` | Data atual (futuro) | 15/01/2025 |
-| `{hora}` | Hora atual (futuro) | 14:30 |
+### Variável obrigatória
 
-### **Exemplo: Prompt Informal**
-```markdown
-Aja como um colega de trabalho resumindo um atendimento.
+Use `{ultimo_tecnico}` no prompt para indicar onde o nome do técnico deve ser inserido:
 
-Use tom informal e amigável. Foque no que {ultimo_tecnico} fez pra resolver.
-
-**O PROBLEMA:**
-Conta rapidinho o que o cliente falou
-
-**O QUE FIZ:**
-Lista as ações que tomei
-
-**RESULTADO:**
-Diz se resolveu ou não
+```
+Resuma o atendimento de {ultimo_tecnico} usando APENAS suas mensagens.
 ```
 
-### **Exemplo: Prompt Técnico Detalhado**
-```markdown
-Aja como um Engenheiro de Software Sênior documentando um incidente.
+### Validar e salvar
 
-**INCIDENT REPORT - Atendimento por {ultimo_tecnico}**
+1. Clique em **"✓ Validar"** para verificar o prompt
+2. Se aparecer **"✅ Prompt válido!"**, clique em **"💾 Salvar Prompt"**
 
-**SYMPTOM:**
-* Sistema/Módulo afetado
-* Error message (exact text)
-* Business impact (urgency level)
+### Restaurar prompt padrão
 
-**ROOT CAUSE ANALYSIS:**
-* Investigation steps performed
-* Logs analyzed (specific files/tables)
-* Root cause identified (technical details)
-
-**RESOLUTION:**
-* Fix applied (code changes, config updates, queries)
-* Verification steps
-* Status: [RESOLVED | MONITORING | ESCALATED]
-
-**FOLLOW-UP:**
-* Preventive measures recommended
-```
-
-### **Validando o Prompt**
-
-Após editar:
-
-1. Clique em **✓ Validar**
-2. Verifique se aparece: **"✅ Prompt válido!"**
-3. Se houver erros, corrija conforme indicado
-4. Clique em **💾 Salvar Prompt**
-
-### **Testando o Prompt**
-
-1. Clique em **👁️ Preview**
-2. Veja como ficaria com dados de exemplo
-3. Ajuste se necessário
-4. Salve quando estiver satisfeito
+Clique em **"🔄 Restaurar Padrão"** para voltar ao prompt original do sistema.
 
 ---
 
-## 💡 **Dicas e Truques**
+## ⚙️ Configurações
 
-### **1. Otimize a Captura**
+Acesse em: clique no ícone do ChatSum → ⚙️
 
-**✅ FAÇA:**
-- Mantenha apenas a conversa relevante aberta
-- Role até o topo para capturar tudo
-- Use em páginas com histórico completo
+### Aba Geral
 
-**❌ EVITE:**
-- Capturar com filtros ativos
-- Capturar conversas muito longas (>50k chars)
-- Capturar múltiplas conversas simultaneamente
+| Opção | Descrição |
+|---|---|
+| Modo Padrão | Define o modo de resumo padrão ao abrir |
+| Provedor de IA | Define qual IA usar por padrão |
+| Auto-copiar | Copia o resumo automaticamente após gerar |
+| Notificações | Ativa notificações do Chrome |
 
-### **2. Economize Requisições**
+<p align="left"> <img src="docs/images/configuracao/geral-extensao.png" width="500"> </p>
 
-O limite é **20 requisições/dia** no plano gratuito.
+### Aba Servidor
 
-**Dicas:**
-- ✅ Agrupe atendimentos similares
-- ✅ Revise o chat antes de resumir
-- ✅ Use o cache (não delete resumos à toa)
-- ❌ Evite gerar múltiplos resumos do mesmo chat
+| Opção | Descrição |
+|---|---|
+| Modo Desenvolvedor | Usa `localhost:8000` (servidor local) |
+| URL do Servidor | URL do servidor Railway (quando não é modo dev) |
+| Testar Conexão | Verifica se o servidor está acessível |
 
-**Veja seu contador:**
-```
-📊 Requisições hoje: 12/20
-```
+> **Dica:** Se usar servidor local, marque **"Modo Desenvolvedor"**. Para Railway, desmarque e configure a URL.
 
-### **3. Copie com Formatação**
+<p align="left"> <img src="docs/images/configuracao/servidor-extensao.png" width="500"> </p>
 
-Quando clicar em **📋 Copiar**, o resumo é copiado com:
-- ✅ Formatação HTML (negrito, cores)
-- ✅ Emojis preservados
-- ✅ Estrutura de listas
 
-**Cole direto em:**
-- Zendesk, Freshdesk (tickets)
-- Google Docs, Word
-- Slack, Teams (com formatação)
-- Gmail, Outlook
+### Aba Prompts
 
-### **4. Use Atalhos de Teclado** (futuro)
+Editor de prompt personalizado com contador de caracteres.
 
-| Atalho | Ação |
-|--------|------|
-| `Ctrl+Shift+R` | Abrir ChatSum |
-| `Enter` | Capturar (quando popup aberto) |
-| `Ctrl+C` | Copiar resumo |
-| `Escape` | Fechar popup |
+<p align="left"> <img src="docs/images/configuracao/prompt-extensao.png" width="500"> </p>
 
-### **5. Trabalhe com Múltiplas Abas**
+### Aba Avançado
 
-**Cenário:** Você está atendendo 3 tickets ao mesmo tempo.
+| Opção | Descrição |
+|---|---|
+| Resetar Contador | Zera o contador de requisições do dia |
+| Limpar Cache | Remove todos os resumos e configurações salvas |
+| Exportar Configurações | Baixa um JSON com todas as configurações |
+| Importar Configurações | Carrega configurações de um arquivo JSON |
+| Modo Debug | Ativa logs detalhados no console do Chrome |
 
-**Como funciona:**
-1. Abra **Aba 1** (Ticket A) → Capture
-2. Enquanto processa, abra **Aba 2** (Ticket B)
-3. Tente capturar → **Bloqueado!** ⚠️
-4. Você verá: _"Resumo em andamento em outra aba"_
-5. Aguarde ou cancele o primeiro
-
-**Motivo:** Evita conflitos e garante que cada resumo seja associado corretamente.
-
-### **6. Debug de Problemas**
-
-Se algo não funcionar:
-
-1. **Ative Modo Debug:**
-   - Configurações → Avançado → ☑ Modo Debug
-
-2. **Abra DevTools:**
-   - Pressione `F12` na página
-
-3. **Console mostrará:**
-```
-   [ChatSum Content] ✅ Plataforma detectada: Zendesk
-   [ChatSum Content] 📨 23 mensagens encontradas
-   [ChatSum Content] 👤 Último técnico: João Silva
-   [ChatSum Content] ✅ Chat capturado com sucesso
-```
-
-4. **Copie logs e reporte se encontrar bugs**
+<p align="left"> <img src="docs/images/configuracao/extensao-avancado.png" width="500"> </p>
 
 ---
 
-## 🎓 **Casos de Uso**
+## 💡 Dicas de Uso
 
-### **Caso 1: Suporte Técnico SaaS**
+### Captura completa do chat
 
-**Contexto:**
-- Empresa de software
-- Atende via Intercom
-- Precisa documentar cada atendimento
+Para chats longos com vários botões "Carregar mais", a extensão clica automaticamente em todos. Isso pode levar alguns segundos dependendo do número de páginas — aguarde o status mudar para "Chat capturado!".
 
-**Fluxo:**
-1. Cliente reporta bug
-2. Técnico investiga e resolve
-3. Usa ChatSum modo **"Último Técnico"**
-4. Cola resumo no Jira/Linear
-5. Ticket documentado em 10 segundos
+### Múltiplas abas abertas
 
-**Benefício:** -80% tempo de documentação
+Quando tiver vários tickets abertos no Movidesk, certifique-se de **clicar na aba do ticket desejado** antes de clicar em Capturar. A extensão sempre lê os dados da aba que está ativa no momento.
 
-### **Caso 2: Handover de Turno**
+### Economizar quota da IA
 
-**Contexto:**
-- Equipe 24/7 com turnos
-- Atendimentos longos passam entre técnicos
+- Verifique o contador **"📊 Requisições hoje: X"** no topo do popup
+- O Gemini gratuito tem ~20 req/dia — mais que suficiente
+- Se o Gemini estiver com 503 (sobrecarga), troque para Groq no seletor
 
-**Fluxo:**
-1. Técnico A trabalha 6h no ticket
-2. Fim do turno, usa modo **"Completo"**
-3. Envia resumo para Técnico B via Slack
-4. Técnico B entende contexto rapidamente
+### Copiar com formatação
 
-**Benefício:** Transição suave, sem perda de contexto
+O botão **"Copiar com Formatação"** copia em HTML — ao colar em sistemas que aceitam HTML (tickets, e-mails, Google Docs), o texto aparece formatado com negrito e cores. Em editores de texto simples, aparece sem formatação.
 
-### **Caso 3: Relatório Semanal**
+### Histórico como backup
 
-**Contexto:**
-- Gestor precisa reportar atendimentos da semana
-
-**Fluxo:**
-1. Gera resumo completo de cada ticket importante
-2. Consolida em um documento
-3. Apresenta para stakeholders
-
-**Benefício:** Visibilidade clara do trabalho realizado
-
-### **Caso 4: Base de Conhecimento**
-
-**Contexto:**
-- Empresa quer documentar soluções comuns
-
-**Fluxo:**
-1. Após resolver bug recorrente
-2. Gera resumo técnico detalhado
-3. Adiciona à Wiki interna
-4. Próximos técnicos consultam
-
-**Benefício:** Conhecimento compartilhado e reutilizável
+O histórico funciona como backup automático. Mesmo que você feche o ticket no Movidesk, o resumo continua disponível nos últimos 10 itens do histórico.
 
 ---
 
-## ⌨️ **Atalhos** (Planejados para v2.1)
+## 📊 Monitorando o Uso
 
-### **Globais**
+O contador no topo do popup mostra as requisições do dia atual:
 
-| Atalho | Ação |
-|--------|------|
-| `Ctrl+Shift+R` | Abrir ChatSum |
-| `Ctrl+Shift+C` | Capturar e resumir |
-
-### **Dentro do Popup**
-
-| Atalho | Ação |
-|--------|------|
-| `Enter` | Confirmar ação |
-| `Escape` | Fechar popup |
-| `Ctrl+C` | Copiar resumo |
-| `Ctrl+K` | Abrir configurações |
-
-### **Página de Configurações**
-
-| Atalho | Ação |
-|--------|------|
-| `Ctrl+S` | Salvar configurações |
-| `Ctrl+R` | Resetar para padrão |
-
----
-
-## 🎨 **Personalizando a Experiência**
-
-### **Temas** (Futuro)
-
-Atualmente apenas tema padrão. Em breve:
-- 🌞 Tema Claro
-- 🌙 Tema Escuro
-- 🎨 Temas Personalizados
-
-### **Notificações**
-
-Configure em **Configurações → Geral**:
-```
-☑ Mostrar notificações quando resumo estiver pronto
-```
-
-**Tipos de notificação:**
-- ✅ Resumo gerado
-- ❌ Erro ao gerar
-- ⚠️ Quota atingida
-
----
-
-## 📊 **Monitorando Uso**
-
-### **Contador de Requisições**
-
-Visível no popup:
 ```
 📊 Requisições hoje: 12
 ```
 
-**Reseta automaticamente:**
-- Todo dia às 00:00 (horário local)
-
-**Para resetar manualmente:**
-- Configurações → Avançado → Resetar Contador
-
-### **Histórico** (Futuro - v2.2)
-
-Em breve você poderá:
-- Ver últimos 10 resumos
-- Buscar por data
-- Exportar histórico
+Reseta automaticamente à meia-noite. Para resetar manualmente: ⚙️ → Avançado → **Resetar Contador**.
 
 ---
 
-## 🆘 **Precisa de Ajuda?**
+## 🆘 Precisa de ajuda?
 
-### **Suporte Rápido**
-
-1. **Leia o [Troubleshooting](INSTALL.md#problemas-comuns)**
-2. **Veja [Examples](EXAMPLES.md)** com casos reais
-3. **Ative Modo Debug** e analise logs
-
-### **Reportar Problemas**
-
-- 🐛 [Issues no GitHub](https://github.com/tairony-cristian/chatsum-extension/issues)
+- 📦 [Guia de Instalação](INSTALL.md)
+- 🐛 [Reportar problema](https://github.com/tairony-cristian/chatsum-extension/issues)
 - 📧 Email: taironycristian@yahoo.com.br
-- 💬 Discussões: [GitHub Discussions](https://github.com/tairony-cristian/chatsum-extension/discussions)
-
----
-
-## 🎉 **Dicas Finais**
-
-1. **Comece simples**: Use modo padrão primeiro
-2. **Experimente**: Teste prompts diferentes
-3. **Compartilhe**: Ajude colegas a usar
-4. **Contribua**: Reporte bugs e sugira melhorias
-5. **Otimize**: Ajuste para seu fluxo de trabalho
-
----
-
-<p align="center">
-  Aproveite o ChatSum! 🚀
-</p>

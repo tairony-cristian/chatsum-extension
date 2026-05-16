@@ -33,7 +33,7 @@ Health check do servidor
 **Request:**
 ```json
 {
-  "texto": "string (100-50000 chars)",
+  "texto": "string (100-10000 chars)",
   "ultimoTecnico": "string (opcional)",
   "modo": "ultimo_tecnico | completo",
   "promptCustom": "string (opcional)"
