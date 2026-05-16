@@ -426,6 +426,21 @@ const MAX_HISTORICO = 10;
  * Salva novo resumo no histórico (máximo 10, mais recente primeiro)
  */
 async function salvarNoHistorico(resumoHtml, resumoOriginal, ticket) {
+    const data = await chrome.storage.local.get('historicoResumos');
+    let hist = data.historicoResumos || [];
+
+    // Evita duplicatas: verifica se o resumo já existe no histórico
+    // Compara os primeiros 200 chars do texto original
+    const assinatura = (resumoOriginal || '').substring(0, 200);
+    const jaExiste = hist.some(item =>
+        (item.resumoOriginal || '').substring(0, 200) === assinatura
+    );
+
+    if (jaExiste) {
+        console.log('[Histórico] Resumo já existe no histórico, ignorando duplicata.');
+        return;
+    }
+
     const agora = new Date();
     const item = {
         resumoHtml,
@@ -437,9 +452,6 @@ async function salvarNoHistorico(resumoHtml, resumoOriginal, ticket) {
         data: agora.toLocaleDateString('pt-BR'),
         timestamp: agora.toISOString()
     };
-
-    const data = await chrome.storage.local.get('historicoResumos');
-    let hist = data.historicoResumos || [];
 
     // Adiciona no início (mais recente primeiro) e limita a 10
     hist.unshift(item);
@@ -889,6 +901,13 @@ btnApagar.addEventListener('click', async () => {
                         ultimoTecnicoEmProcessamento: null,
                         modoEmProcessamento: null,
                         timestampProcessamento: null
+                    });
+
+                    // Salva no histórico o resumo recuperado do servidor
+                    await salvarNoHistorico(htmlFormatado, result.resumo, {
+                        razaoSocial: '',
+                        numero: '',
+                        iaUsada: result.iaUsada || result.modelo || 'gemini'
                     });
                 }
             } catch (err) {
