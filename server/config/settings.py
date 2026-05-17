@@ -48,7 +48,7 @@ class Settings:
     ]
     
     # Validações
-    MIN_CHAT_LENGTH: int = 100  # Tamanho mínimo do chat
+    MIN_CHAT_LENGTH: int = 250  # Tamanho mínimo do chat
     MAX_CHAT_LENGTH: int = 50000  # Tamanho máximo (50k chars)
     
     @classmethod
