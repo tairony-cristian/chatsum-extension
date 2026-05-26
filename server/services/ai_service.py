@@ -159,7 +159,10 @@ class AIService:
                 "temperature": 0.7,
                 "topK": 40,
                 "topP": 0.95,
-                "maxOutputTokens": 4096,
+                "maxOutputTokens": 8192,
+                "thinkingConfig": {      # ← dentro do generationConfig
+                    "thinkingBudget": 0
+                }
             }
         }
 
@@ -203,11 +206,14 @@ class AIService:
                     candidates = data.get("candidates", [])
                     if candidates:
                         parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts and "text" in parts[0]:
-                            texto = parts[0]["text"].strip()
-                            if texto:
-                                logger.info(f"[Gemini] OK com {modelo}")
-                                return texto
+                        response_parts = [
+                            p["text"] for p in parts
+                            if "text" in p and not p.get("thought", False)
+                        ]
+                        texto = " ".join(response_parts).strip()
+                        if texto:
+                            logger.info(f"[Gemini] OK com {modelo}")
+                            return texto
 
                 except (DailyQuotaExceededError, RateLimitError, ServiceUnavailableError):
                     raise
