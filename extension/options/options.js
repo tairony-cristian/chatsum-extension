@@ -15,6 +15,7 @@ const toast = document.getElementById('toast');
 
 const modoDefaultRadios = document.querySelectorAll('input[name="modoDefault"]');
 const autoCopiarCheck = document.getElementById('autoCopiar');
+const copiarImagensCheck = document.getElementById('copiarImagens');
 const notificacoesCheck = document.getElementById('notificacoes');
 const btnSalvarGeral = document.getElementById('btnSalvarGeral');
 
@@ -113,6 +114,7 @@ async function carregarConfiguracoes() {
     'serverUrl',
     'modoDesenvolvedor',
     'autoCopiar',
+    'copiarImagens',
     'notificacoes',
     'promptAtivo',
     'promptPersonalizado',
@@ -125,6 +127,7 @@ async function carregarConfiguracoes() {
   if (modoRadio) modoRadio.checked = true;
   
   autoCopiarCheck.checked = config.autoCopiar || false;
+  copiarImagensCheck.checked = config.copiarImagens || false;
   notificacoesCheck.checked = config.notificacoes !== false;
 
   // ABA GERAL - Provedor de IA
@@ -298,6 +301,7 @@ async function salvarConfiguracoesGerais() {
     await chrome.storage.local.set({
       modoResumo: modoSelecionado,
       autoCopiar: autoCopiarCheck.checked,
+      copiarImagens: copiarImagensCheck.checked,
       notificacoes: notificacoesCheck.checked,
       iaProvider: iaProviderSelecionado
     });

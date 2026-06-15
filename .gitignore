@@ -39,6 +39,7 @@ dist/
 build/
 *.crx
 *.zip
+*.rar
 
 # Temporários
 tmp/

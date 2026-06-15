@@ -74,8 +74,32 @@ const PLATAFORMAS = {
           const conteudosMensagem = Array.from(container.querySelectorAll("span.message"))
             .map(el => el.innerText?.trim())
             .filter(msg => msg && msg.length > 0);
-          
-          if (conteudosMensagem.length === 0) return; // Skip se vazio
+
+          // ⭐ CAPTURA DE IMAGENS: apenas imagens reais enviadas como anexo no chat
+          // Seletor preciso: .chat-attachment-item é o container de upload do Movidesk
+          // Isso exclui automaticamente avatares (.img-avatar), imagens de assinatura
+          // de e-mail (classes Froala: fr-fic, fr-fil, fr-dii) e ícones de sistema
+          const imagensRaw = Array.from(container.querySelectorAll(".chat-attachment-item img"));
+
+          const imagens = imagensRaw
+            .filter(img => {
+              // Ignora avatares de usuário (segurança extra, não devem aparecer aqui)
+              if (img.classList.contains("img-avatar")) return false;
+              return true;
+            })
+            .map(img => {
+              const src = img.getAttribute("src") || "";
+              if (!src) return null;
+              // URL relativa (ex: /Ticket/GetS3PreSignedUrl?id=...) → absoluta
+              if (src.startsWith("/")) return window.location.origin + src;
+              // URL já absoluta (S3 do Movidesk via upload direto no chat)
+              if (src.startsWith("http")) return src;
+              return null;
+            })
+            .filter(Boolean);
+
+          // Skip mensagem sem texto E sem imagens reais
+          if (conteudosMensagem.length === 0 && imagens.length === 0) return;
           
           const conteudoCompleto = conteudosMensagem.join("\n");
           
@@ -86,12 +110,18 @@ const PLATAFORMAS = {
           }
           
           // Armazena mensagem estruturada
+          // Imagens do "Sistema" são sempre notificações automáticas, não capturas reais
           mensagens.push({
             autor: nome,
             conteudo: conteudoCompleto,
+            imagens: nome === "Sistema" ? [] : imagens,
             hora: hora,
             timestamp: new Date().toISOString()
           });
+
+          if (imagens.length > 0 && nome !== "Sistema") {
+            log(`🖼️ ${imagens.length} imagem(ns) capturada(s) em mensagem de ${nome}`);
+          }
         });
         
         // ETAPA 7: Formatar resultado
@@ -100,20 +130,33 @@ const PLATAFORMAS = {
           : "";
         
         const chatFormatado = mensagens
-          .map(msg => `[${msg.hora}] ${msg.autor}:\n${msg.conteudo}`)
+          .map(msg => {
+            let linha = `[${msg.hora}] ${msg.autor}:\n${msg.conteudo}`;
+            if (msg.imagens && msg.imagens.length > 0) {
+              linha += `\n[IMAGENS: ${msg.imagens.join(", ")}]`;
+            }
+            return linha;
+          })
           .join("\n\n");
+
+        // Coleta todas as imagens do chat (com autor e hora para contexto)
+        const todasImagens = mensagens
+          .filter(msg => msg.imagens && msg.imagens.length > 0)
+          .flatMap(msg => msg.imagens.map(url => ({ url, autor: msg.autor, hora: msg.hora })));
         
         log('✅ Captura Movidesk concluída com sucesso');
-        log(`📊 Estatísticas: ${mensagens.length} mensagens, ${chatFormatado.length} caracteres`);
+        log(`📊 Estatísticas: ${mensagens.length} mensagens, ${chatFormatado.length} caracteres, ${todasImagens.length} imagem(ns)`);
         
         return {
           success: true,
           chat: chatFormatado,
           ultimoTecnico: ultimoTecnico,
           ticket: dadosTicket,
+          imagens: todasImagens,
           metadata: {
             plataforma: this.nome,
             totalMensagens: mensagens.length,
+            totalImagens: todasImagens.length,
             tamanhoBytes: new Blob([chatFormatado]).size,
             timestamp: new Date().toISOString()
           }

@@ -148,6 +148,7 @@ async function obterServerUrl() {
 
 /**
  * Copia o resumo para clipboard em formato HTML e texto plano.
+ * Se a configuração "copiarImagens" estiver ativa, inclui as imagens abaixo do resumo.
  * @returns {Promise<boolean>} true se copiou com sucesso
  */
 async function copiarResumoParaClipboard() {
@@ -159,6 +160,30 @@ async function copiarResumoParaClipboard() {
             return false;
         }
 
+        // Verifica se deve incluir imagens
+        const config = await chrome.storage.local.get(['copiarImagens', 'imagensCapturadas']);
+        const incluirImagens = config.copiarImagens || false;
+        const imagens = config.imagensCapturadas || [];
+
+        // Monta bloco de imagens se necessário
+        let htmlImagens = '';
+        let textoImagens = '';
+        if (incluirImagens && imagens.length > 0) {
+            htmlImagens = `
+<hr style="margin: 16px 0; border: none; border-top: 1px solid #ddd;">
+<p style="margin: 8px 0; font-weight: bold; color: #555;">📎 Imagens do Chat (${imagens.length}):</p>
+<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+` + imagens.map(img => `
+  <div style="border: 1px solid #e0e0e0; border-radius: 4px; padding: 6px; background: #fafafa;">
+    <small style="color: #888; display: block; margin-bottom: 4px;">[${img.hora || ''}] ${img.autor || ''}</small>
+    <img src="${img.url}" alt="Imagem do chat" style="max-width: 480px; max-height: 400px; display: block; border-radius: 2px;">
+  </div>`).join('') + `
+</div>`;
+            textoImagens = '\n\n--- IMAGENS DO CHAT ---\n' +
+                imagens.map(img => `[${img.hora || ''}] ${img.autor || ''}: ${img.url}`).join('\n');
+            console.log(`[ChatSum] Incluindo ${imagens.length} imagem(ns) no clipboard`);
+        }
+
         // Converte HTML para texto limpo (fallback)
         const textoLimpo = htmlContent
             .replace(/<br\s*\/?>/gi, '\n')
@@ -166,7 +191,7 @@ async function copiarResumoParaClipboard() {
             .replace(/<span[^>]*>(.*?)<\/span>/gi, '$1')
             .replace(/<[^>]*>/g, '')
             .replace(/&nbsp;/g, ' ')
-            .trim();
+            .trim() + textoImagens;
 
         // Prepara HTML completo com estilos inline
         const htmlCompleto = `
@@ -177,6 +202,7 @@ async function copiarResumoParaClipboard() {
 </head>
 <body style="font-family: Arial, sans-serif; font-size: 13px; color: #333; line-height: 1.6;">
     ${htmlContent}
+    ${htmlImagens}
 </body>
 </html>
         `.trim();
@@ -690,15 +716,18 @@ btnCapturar.addEventListener('click', async () => {
                     chatEmProcessamento: response.chat,
                     ultimoTecnicoEmProcessamento: response.ultimoTecnico || '',
                     modoEmProcessamento: modo,
-                    timestampProcessamento: new Date().toISOString()
+                    timestampProcessamento: new Date().toISOString(),
+                    imagensCapturadas: response.imagens || []
                 });
-                console.log('[ChatSum] Chat salvo em progresso (backup)');
+                console.log('[ChatSum] Chat salvo em progresso (backup) | Imagens:', (response.imagens || []).length);
 
                 try {
                     const config = await chrome.storage.local.get([
                         'promptAtivo',
                         'promptPersonalizado',
-                        'autoCopiar'
+                        'autoCopiar',
+                        'copiarImagens',
+                        'imagensCapturadas'
                     ]);
 
                     const payloadResumo = {
@@ -754,6 +783,7 @@ btnCapturar.addEventListener('click', async () => {
                             timestampResumo: result.timestamp || agora,
                             ultimoTecnico: result.ultimoTecnico || response.ultimoTecnico || '',
                             modoResumo: modo,
+                            // Preserva imagensCapturadas para uso no clipboard
                             // Limpa backups em progresso após sucesso
                             chatEmProcessamento: null,
                             ultimoTecnicoEmProcessamento: null,
@@ -820,7 +850,7 @@ btnCopiar.addEventListener('click', async () => {
 // ============================================
 
 btnApagar.addEventListener('click', async () => {
-    await chrome.storage.local.remove(['ultimoResumo', 'timestampResumo']);
+    await chrome.storage.local.remove(['ultimoResumo', 'timestampResumo', 'imagensCapturadas']);
 
     resultadoPre.innerHTML = '';
     btnCapturar.style.display = 'inline-block';
