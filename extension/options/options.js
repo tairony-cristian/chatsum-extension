@@ -16,6 +16,7 @@ const toast = document.getElementById('toast');
 const modoDefaultRadios = document.querySelectorAll('input[name="modoDefault"]');
 const autoCopiarCheck = document.getElementById('autoCopiar');
 const copiarImagensCheck = document.getElementById('copiarImagens');
+const autoColarCheck = document.getElementById('autoColar');
 const notificacoesCheck = document.getElementById('notificacoes');
 const btnSalvarGeral = document.getElementById('btnSalvarGeral');
 
@@ -115,6 +116,7 @@ async function carregarConfiguracoes() {
     'modoDesenvolvedor',
     'autoCopiar',
     'copiarImagens',
+    'autoColar',
     'notificacoes',
     'promptAtivo',
     'promptPersonalizado',
@@ -128,6 +130,7 @@ async function carregarConfiguracoes() {
   
   autoCopiarCheck.checked = config.autoCopiar || false;
   copiarImagensCheck.checked = config.copiarImagens || false;
+  autoColarCheck.checked = config.autoColar || false;
   notificacoesCheck.checked = config.notificacoes !== false;
 
   // ABA GERAL - Provedor de IA
@@ -179,6 +182,19 @@ function registrarEventListeners() {
   // ============================================
 
   btnSalvarGeral.addEventListener('click', salvarConfiguracoesGerais);
+
+  // Dependência: marcar "colar" força "copiar"; desmarcar "copiar" desmarca "colar"
+  autoColarCheck.addEventListener('change', () => {
+    if (autoColarCheck.checked) {
+      autoCopiarCheck.checked = true;
+    }
+  });
+
+  autoCopiarCheck.addEventListener('change', () => {
+    if (!autoCopiarCheck.checked) {
+      autoColarCheck.checked = false;
+    }
+  });
 
   // ============================================
   // EVENTOS - ABA SERVIDOR
@@ -302,6 +318,7 @@ async function salvarConfiguracoesGerais() {
       modoResumo: modoSelecionado,
       autoCopiar: autoCopiarCheck.checked,
       copiarImagens: copiarImagensCheck.checked,
+      autoColar: autoColarCheck.checked,
       notificacoes: notificacoesCheck.checked,
       iaProvider: iaProviderSelecionado
     });

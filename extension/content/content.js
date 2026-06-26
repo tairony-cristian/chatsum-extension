@@ -67,7 +67,7 @@ const PLATAFORMAS = {
         const mensagens = [];
         const tecnicosChat = [];
         
-        containers.forEach((container, index) => {
+        containers.forEach((container) => {
           const nome = container.querySelector(".user")?.innerText?.trim() || "Sistema";
           const hora = container.querySelector(".time")?.innerText?.trim() || "??:??";
           
@@ -76,23 +76,14 @@ const PLATAFORMAS = {
             .filter(msg => msg && msg.length > 0);
 
           // ⭐ CAPTURA DE IMAGENS: apenas imagens reais enviadas como anexo no chat
-          // Seletor preciso: .chat-attachment-item é o container de upload do Movidesk
-          // Isso exclui automaticamente avatares (.img-avatar), imagens de assinatura
-          // de e-mail (classes Froala: fr-fic, fr-fil, fr-dii) e ícones de sistema
-          const imagensRaw = Array.from(container.querySelectorAll(".chat-attachment-item img"));
-
-          const imagens = imagensRaw
-            .filter(img => {
-              // Ignora avatares de usuário (segurança extra, não devem aparecer aqui)
-              if (img.classList.contains("img-avatar")) return false;
-              return true;
-            })
+          // .chat-attachment-item é o container de upload do Movidesk
+          // Exclui avatares (.img-avatar), assinaturas Froala e ícones de sistema
+          const imagens = Array.from(container.querySelectorAll(".chat-attachment-item img"))
+            .filter(img => !img.classList.contains("img-avatar"))
             .map(img => {
               const src = img.getAttribute("src") || "";
               if (!src) return null;
-              // URL relativa (ex: /Ticket/GetS3PreSignedUrl?id=...) → absoluta
               if (src.startsWith("/")) return window.location.origin + src;
-              // URL já absoluta (S3 do Movidesk via upload direto no chat)
               if (src.startsWith("http")) return src;
               return null;
             })
@@ -110,7 +101,7 @@ const PLATAFORMAS = {
           }
           
           // Armazena mensagem estruturada
-          // Imagens do "Sistema" são sempre notificações automáticas, não capturas reais
+          // Imagens do "Sistema" são notificações automáticas, não capturas reais
           mensagens.push({
             autor: nome,
             conteudo: conteudoCompleto,
@@ -139,7 +130,7 @@ const PLATAFORMAS = {
           })
           .join("\n\n");
 
-        // Coleta todas as imagens do chat (com autor e hora para contexto)
+        // Coleta todas as imagens do chat com autor e hora para contexto
         const todasImagens = mensagens
           .filter(msg => msg.imagens && msg.imagens.length > 0)
           .flatMap(msg => msg.imagens.map(url => ({ url, autor: msg.autor, hora: msg.hora })));
@@ -721,6 +712,95 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     return true;
   }
+
+  if (request.action === 'colarNaDocumentacao') {
+    (async () => {
+      try {
+        const htmlResumo = request.html || '';
+        if (!htmlResumo) {
+          sendResponse({ success: false, erro: 'HTML vazio' });
+          return;
+        }
+
+        // Aguarda o editor Froala aparecer e estar pronto para receber foco.
+        // O Movidesk é SPA: o fr-element pode ser inserido no DOM mas ainda
+        // não estar inicializado pelo Froala. Por isso usamos polling com intervalo
+        // em vez de só MutationObserver (que dispara cedo demais).
+        const editorSelector = '#ticket-description-container .fr-element[contenteditable="true"]';
+
+        const editor = await new Promise((resolve) => {
+          let tentativas = 0;
+          const MAX_TENTATIVAS = 40; // 40 × 250ms = 10 segundos
+
+          const intervalo = setInterval(() => {
+            tentativas++;
+            const el = document.querySelector(editorSelector);
+
+            if (el) {
+              clearInterval(intervalo);
+              log(`✅ Editor encontrado após ${tentativas} tentativa(s)`);
+              resolve(el);
+              return;
+            }
+
+            if (tentativas >= MAX_TENTATIVAS) {
+              clearInterval(intervalo);
+              log('❌ Editor não encontrado após 10s de espera');
+              resolve(null);
+            }
+          }, 250);
+        });
+
+        if (!editor) {
+          log('❌ Editor de documentação não encontrado após aguardar');
+          sendResponse({ success: false, erro: 'Editor não encontrado. Abra a aba de documentação do ticket.' });
+          return;
+        }
+
+        // Foca no editor para ativar o Froala
+        editor.focus();
+
+        // Cria um div temporário com o HTML do resumo + separador
+        const separador = '<hr style="border:none;border-top:1px solid #ddd;margin:12px 0;">';
+        const htmlParaColar = `<div>${htmlResumo}${separador}</div>`;
+
+        // Move o cursor para o início absoluto do editor
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.setStart(editor, 0);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        // Injeta via execCommand (compatível com Froala/contenteditable)
+        const sucesso = document.execCommand('insertHTML', false, htmlParaColar);
+
+        if (sucesso) {
+          log('✅ Resumo colado na documentação com sucesso');
+          // Dispara evento input para o Froala detectar a mudança
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+          editor.dispatchEvent(new Event('keyup', { bubbles: true }));
+          sendResponse({ success: true });
+        } else {
+          // Fallback: inserção direta no DOM antes do primeiro filho
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = htmlParaColar;
+          const fragment = document.createDocumentFragment();
+          while (tempDiv.firstChild) fragment.appendChild(tempDiv.firstChild);
+          editor.insertBefore(fragment, editor.firstChild);
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+          log('✅ Resumo colado via fallback DOM');
+          sendResponse({ success: true });
+        }
+
+      } catch (err) {
+        log('❌ Erro ao colar na documentação: ' + err.message);
+        sendResponse({ success: false, erro: err.message });
+      }
+    })();
+    return true;
+  }
+
 });
 
 // Inicialização

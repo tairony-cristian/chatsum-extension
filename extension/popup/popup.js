@@ -1,6 +1,98 @@
 console.log('[ChatSum] Popup carregado');
 
 // ============================================
+// FUNÇÃO INJETADA VIA executeScript NA ABA
+// Precisa ser função nomeada de escopo global —
+// executeScript serializa e envia para a página.
+// NÃO pode referenciar variáveis externas do popup.
+// ============================================
+
+/**
+ * Executada diretamente na aba do Movidesk via chrome.scripting.executeScript.
+ * Aguarda o editor Froala por polling e injeta o HTML do resumo.
+ * @param {string} htmlResumo - HTML a ser inserido na documentação
+ * @returns {Promise<{success: boolean, erro?: string}>}
+ */
+async function colarHtmlNaDocumentacao(htmlResumo) {
+    const SELETOR = '#ticket-description-container .fr-element[contenteditable="true"]';
+    const MAX_TENTATIVAS = 60;
+    let tentativas = 0;
+
+    const editor = await new Promise((resolve) => {
+        const intervalo = setInterval(() => {
+            tentativas++;
+            const el = document.querySelector(SELETOR);
+            if (el) { clearInterval(intervalo); resolve(el); return; }
+            if (tentativas >= MAX_TENTATIVAS) { clearInterval(intervalo); resolve(null); }
+        }, 250);
+    });
+
+    if (!editor) {
+        return { success: false, erro: 'Editor não encontrado. Abra a aba de documentação do ticket.' };
+    }
+
+    const separador = '<hr style="border:none;border-top:1px solid #ddd;margin:12px 0;">';
+    const htmlParaColar = `<div>${htmlResumo}${separador}</div>`;
+
+    // MÉTODO 1: paste event — como o Froala espera receber HTML externo
+    try {
+        editor.focus();
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.setStart(editor, 0);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        const htmlAntes = editor.innerHTML;
+        const dt = new DataTransfer();
+        dt.setData('text/html', htmlParaColar);
+        dt.setData('text/plain', editor.innerText);
+        const pasteEvent = new ClipboardEvent('paste', {
+            bubbles: true, cancelable: true, clipboardData: dt
+        });
+        editor.dispatchEvent(pasteEvent);
+
+        await new Promise(r => setTimeout(r, 300));
+        if (editor.innerHTML !== htmlAntes) {
+            return { success: true, metodo: 'paste_event' };
+        }
+    } catch (e) { /* segue */ }
+
+    // MÉTODO 2: execCommand insertHTML com verificação real de mudança
+    try {
+        editor.focus();
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.setStart(editor, 0);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        const htmlAntes = editor.innerHTML;
+        document.execCommand('insertHTML', false, htmlParaColar);
+        await new Promise(r => setTimeout(r, 200));
+
+        if (editor.innerHTML !== htmlAntes) {
+            editor.dispatchEvent(new Event('input', { bubbles: true }));
+            return { success: true, metodo: 'execCommand' };
+        }
+    } catch (e) { /* segue */ }
+
+    // MÉTODO 3: innerHTML direto + eventos Froala
+    try {
+        const conteudoAtual = editor.innerHTML;
+        editor.innerHTML = htmlParaColar + conteudoAtual;
+        editor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
+        editor.dispatchEvent(new Event('keyup', { bubbles: true }));
+        editor.dispatchEvent(new Event('change', { bubbles: true }));
+        return { success: true, metodo: 'innerHTML_direto' };
+    } catch (err) {
+        return { success: false, erro: err.message };
+    }
+}
+
+// ============================================
 // ELEMENTOS DOM
 // ============================================
 
@@ -151,7 +243,7 @@ async function obterServerUrl() {
  * Se a configuração "copiarImagens" estiver ativa, inclui as imagens abaixo do resumo.
  * @returns {Promise<boolean>} true se copiou com sucesso
  */
-async function copiarResumoParaClipboard() {
+async function copiarResumoParaClipboard(htmlPreMontado = null) {
     try {
         const htmlContent = resultadoPre.innerHTML;
 
@@ -160,38 +252,41 @@ async function copiarResumoParaClipboard() {
             return false;
         }
 
-        // Verifica se deve incluir imagens
-        const config = await chrome.storage.local.get(['copiarImagens', 'imagensCapturadas']);
-        const incluirImagens = config.copiarImagens || false;
-        const imagens = config.imagensCapturadas || [];
-
-        // Monta bloco de imagens se necessário
-        let htmlImagens = '';
+        // Se recebermos HTML já montado (com imagens), usamos direto
+        // Caso contrário, buscamos a config e montamos aqui (ex: botão Copiar manual)
+        let htmlFinal = htmlPreMontado;
         let textoImagens = '';
-        if (incluirImagens && imagens.length > 0) {
-            htmlImagens = `
-<hr style="margin: 16px 0; border: none; border-top: 1px solid #ddd;">
-<p style="margin: 8px 0; font-weight: bold; color: #555;">📎 Imagens do Chat (${imagens.length}):</p>
-<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+
+        if (!htmlFinal) {
+            const config = await chrome.storage.local.get(['copiarImagens', 'imagensCapturadas']);
+            const imagens = (config.copiarImagens && config.imagensCapturadas) ? config.imagensCapturadas : [];
+
+            let htmlImagens = '';
+            if (imagens.length > 0) {
+                htmlImagens = `
+<hr style="margin:16px 0;border:none;border-top:1px solid #ddd;">
+<p style="margin:8px 0;font-weight:bold;color:#555;">📎 Imagens do Chat (${imagens.length}):</p>
+<div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
 ` + imagens.map(img => `
-  <div style="border: 1px solid #e0e0e0; border-radius: 4px; padding: 6px; background: #fafafa;">
-    <small style="color: #888; display: block; margin-bottom: 4px;">[${img.hora || ''}] ${img.autor || ''}</small>
-    <img src="${img.url}" alt="Imagem do chat" style="max-width: 480px; max-height: 400px; display: block; border-radius: 2px;">
-  </div>`).join('') + `
-</div>`;
-            textoImagens = '\n\n--- IMAGENS DO CHAT ---\n' +
-                imagens.map(img => `[${img.hora || ''}] ${img.autor || ''}: ${img.url}`).join('\n');
-            console.log(`[ChatSum] Incluindo ${imagens.length} imagem(ns) no clipboard`);
+  <div style="border:1px solid #e0e0e0;border-radius:4px;padding:6px;background:#fafafa;">
+    <small style="color:#888;display:block;margin-bottom:4px;">[${img.hora || ''}] ${img.autor || ''}</small>
+    <img src="${img.url}" alt="Imagem do chat" style="max-width:480px;max-height:400px;display:block;border-radius:2px;">
+  </div>`).join('') + `\n</div>`;
+                textoImagens = '\n\n--- IMAGENS DO CHAT ---\n' +
+                    imagens.map(img => `[${img.hora || ''}] ${img.autor || ''}: ${img.url}`).join('\n');
+                console.log(`[ChatSum] Incluindo ${imagens.length} imagem(ns) no clipboard`);
+            }
+            htmlFinal = htmlContent + htmlImagens;
         }
 
         // Converte HTML para texto limpo (fallback)
-        const textoLimpo = htmlContent
+        const textoLimpo = htmlFinal
             .replace(/<br\s*\/?>/gi, '\n')
             .replace(/<b>(.*?)<\/b>/gi, '$1')
             .replace(/<span[^>]*>(.*?)<\/span>/gi, '$1')
             .replace(/<[^>]*>/g, '')
             .replace(/&nbsp;/g, ' ')
-            .trim() + textoImagens;
+            .trim();
 
         // Prepara HTML completo com estilos inline
         const htmlCompleto = `
@@ -201,8 +296,7 @@ async function copiarResumoParaClipboard() {
     <meta charset="UTF-8">
 </head>
 <body style="font-family: Arial, sans-serif; font-size: 13px; color: #333; line-height: 1.6;">
-    ${htmlContent}
-    ${htmlImagens}
+    ${htmlFinal}
 </body>
 </html>
         `.trim();
@@ -669,14 +763,18 @@ btnCapturar.addEventListener('click', async () => {
         setStatus('⏳ Capturando chat...', 'info');
 
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        console.log('[ChatSum] Aba atual:', tab.id, tab.url);
+        // ⭐ Salva o ID da aba de origem para uso no autocolar.
+        // Não usa chrome.tabs.query novamente lá dentro — o usuário pode ter
+        // trocado de aba enquanto a IA processava o resumo.
+        const tabId = tab.id;
+        console.log('[ChatSum] Aba atual:', tabId, tab.url);
 
         const modo = selectModo.value;
         const iaProvider = selectIa ? selectIa.value : 'gemini';
         console.log('[ChatSum] Modo selecionado:', modo, '| IA:', iaProvider);
 
         chrome.tabs.sendMessage(
-            tab.id,
+            tabId,
             { action: 'coletarChat' },
             async (response) => {
                 console.log('[ChatSum] Resposta do content script:', response);
@@ -727,6 +825,7 @@ btnCapturar.addEventListener('click', async () => {
                         'promptPersonalizado',
                         'autoCopiar',
                         'copiarImagens',
+                        'autoColar',
                         'imagensCapturadas'
                     ]);
 
@@ -783,7 +882,6 @@ btnCapturar.addEventListener('click', async () => {
                             timestampResumo: result.timestamp || agora,
                             ultimoTecnico: result.ultimoTecnico || response.ultimoTecnico || '',
                             modoResumo: modo,
-                            // Preserva imagensCapturadas para uso no clipboard
                             // Limpa backups em progresso após sucesso
                             chatEmProcessamento: null,
                             ultimoTecnicoEmProcessamento: null,
@@ -801,13 +899,64 @@ btnCapturar.addEventListener('click', async () => {
                             iaUsada: iaUsada
                         });
 
+                        // ── Monta bloco de imagens (reutilizado em copiar E colar) ──
+                        const imagensCapturadas = config.imagensCapturadas || [];
+                        const incluirImagens = config.copiarImagens && imagensCapturadas.length > 0;
+
+                        let htmlImagens = '';
+                        if (incluirImagens) {
+                            htmlImagens = `
+<hr style="margin:16px 0;border:none;border-top:1px solid #ddd;">
+<p style="margin:8px 0;font-weight:bold;color:#555;">📎 Imagens do Chat (${imagensCapturadas.length}):</p>
+<div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
+` + imagensCapturadas.map(img => `
+  <div style="border:1px solid #e0e0e0;border-radius:4px;padding:6px;background:#fafafa;">
+    <small style="color:#888;display:block;margin-bottom:4px;">[${img.hora || ''}] ${img.autor || ''}</small>
+    <img src="${img.url}" alt="Imagem do chat" style="max-width:480px;max-height:400px;display:block;border-radius:2px;">
+  </div>`).join('') + `\n</div>`;
+                            console.log(`[ChatSum] ${imagensCapturadas.length} imagem(ns) incluída(s)`);
+                        }
+
+                        // HTML completo = resumo + imagens (usado tanto no copiar quanto no colar)
+                        const htmlComImagens = resultadoPre.innerHTML + htmlImagens;
+
                         // Auto-copiar se configurado
                         if (config.autoCopiar) {
                             console.log('[ChatSum] Auto-copiar ativado...');
-                            const sucesso = await copiarResumoParaClipboard();
+                            const sucesso = await copiarResumoParaClipboard(htmlComImagens);
                             if (sucesso) {
                                 setStatus('📋 Copiado automaticamente!', 'ok');
-                                setTimeout(() => setStatus(`✅ Resumo gerado via ${nomeIA[iaUsada] || iaUsada}!`, 'ok'), 2000);
+
+                                // Auto-colar na documentação se ambas opções estiverem ativas
+                                if (config.autoColar) {
+                                    console.log('[ChatSum] Auto-colar ativado, colando na documentação...');
+                                    setStatus('📝 Colando na documentação...', 'info');
+
+                                    try {
+                                        // ⭐ executeScript injeta e executa diretamente na aba de origem.
+                                        // Não depende do content script estar ativo (resolve o problema
+                                        // de páginas abertas antes da extensão ou após navegação SPA).
+                                        const [resultado] = await chrome.scripting.executeScript({
+                                            target: { tabId: tabId },
+                                            func: colarHtmlNaDocumentacao,
+                                            args: [htmlComImagens]
+                                        });
+
+                                        if (resultado?.result?.success) {
+                                            setStatus('✅ Colado na documentação!', 'ok');
+                                        } else {
+                                            const motivo = resultado?.result?.erro || 'Editor não encontrado';
+                                            setStatus(`⚠️ Não colou: ${motivo}`, 'aviso');
+                                        }
+                                    } catch (errColar) {
+                                        console.error('[ChatSum] Erro ao colar:', errColar);
+                                        setStatus('⚠️ Não foi possível colar. Abra a aba de documentação.', 'aviso');
+                                    }
+
+                                    setTimeout(() => setStatus(`✅ Resumo gerado via ${nomeIA[iaUsada] || iaUsada}!`, 'ok'), 3000);
+                                } else {
+                                    setTimeout(() => setStatus(`✅ Resumo gerado via ${nomeIA[iaUsada] || iaUsada}!`, 'ok'), 2000);
+                                }
                             }
                         }
 
