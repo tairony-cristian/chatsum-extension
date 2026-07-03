@@ -14,15 +14,28 @@ console.log('[ChatSum] Popup carregado');
  * @returns {Promise<{success: boolean, erro?: string}>}
  */
 async function colarHtmlNaDocumentacao(htmlResumo) {
-    const SELETOR = '#ticket-description-container .fr-element[contenteditable="true"]';
-    const MAX_TENTATIVAS = 60;
+    // O Movidesk renderiza dois fr-element no DOM:
+    //   [0] = editor oculto (tamanho 0x0, sem classe 'valid')
+    //   [1] = editor visível (com ou sem 'valid' dependendo do foco)
+    // querySelector sempre retorna o [0], por isso usamos querySelectorAll e pegamos
+    // o primeiro com BoundingClientRect com área > 0 (visível na tela).
+    // A classe 'valid' só aparece após clique real do usuário — não podemos forçá-la via script.
+
+    const MAX_TENTATIVAS = 60; // 60 × 250ms = 15 segundos
     let tentativas = 0;
 
     const editor = await new Promise((resolve) => {
         const intervalo = setInterval(() => {
             tentativas++;
-            const el = document.querySelector(SELETOR);
-            if (el) { clearInterval(intervalo); resolve(el); return; }
+            const todos = document.querySelectorAll('.fr-element.fr-view[contenteditable="true"]');
+            for (const el of todos) {
+                const rect = el.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                    clearInterval(intervalo);
+                    resolve(el);
+                    return;
+                }
+            }
             if (tentativas >= MAX_TENTATIVAS) { clearInterval(intervalo); resolve(null); }
         }, 250);
     });
@@ -34,59 +47,36 @@ async function colarHtmlNaDocumentacao(htmlResumo) {
     const separador = '<hr style="border:none;border-top:1px solid #ddd;margin:12px 0;">';
     const htmlParaColar = `<div>${htmlResumo}${separador}</div>`;
 
-    // MÉTODO 1: paste event — como o Froala espera receber HTML externo
+    // Localiza a div.signature para inserir o resumo ANTES dela
+    // (preserva a assinatura já existente no campo)
+    const signature = editor.querySelector('div.signature');
+
+    // MÉTODO 1: inserção direta no DOM antes da assinatura
+    // É o mais confiável pois não depende de eventos do Froala
     try {
-        editor.focus();
-        const range = document.createRange();
-        const sel = window.getSelection();
-        range.setStart(editor, 0);
-        range.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(range);
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlParaColar;
 
-        const htmlAntes = editor.innerHTML;
-        const dt = new DataTransfer();
-        dt.setData('text/html', htmlParaColar);
-        dt.setData('text/plain', editor.innerText);
-        const pasteEvent = new ClipboardEvent('paste', {
-            bubbles: true, cancelable: true, clipboardData: dt
-        });
-        editor.dispatchEvent(pasteEvent);
-
-        await new Promise(r => setTimeout(r, 300));
-        if (editor.innerHTML !== htmlAntes) {
-            return { success: true, metodo: 'paste_event' };
+        if (signature) {
+            // Insere antes da assinatura
+            editor.insertBefore(tempDiv.firstChild, signature);
+        } else {
+            // Sem assinatura: insere no início
+            editor.insertBefore(tempDiv.firstChild, editor.firstChild);
         }
-    } catch (e) { /* segue */ }
 
-    // MÉTODO 2: execCommand insertHTML com verificação real de mudança
-    try {
-        editor.focus();
-        const range = document.createRange();
-        const sel = window.getSelection();
-        range.setStart(editor, 0);
-        range.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(range);
-
-        const htmlAntes = editor.innerHTML;
-        document.execCommand('insertHTML', false, htmlParaColar);
-        await new Promise(r => setTimeout(r, 200));
-
-        if (editor.innerHTML !== htmlAntes) {
-            editor.dispatchEvent(new Event('input', { bubbles: true }));
-            return { success: true, metodo: 'execCommand' };
-        }
-    } catch (e) { /* segue */ }
-
-    // MÉTODO 3: innerHTML direto + eventos Froala
-    try {
-        const conteudoAtual = editor.innerHTML;
-        editor.innerHTML = htmlParaColar + conteudoAtual;
+        // Dispara eventos que o Froala usa para detectar mudança e habilitar o botão Salvar
         editor.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
         editor.dispatchEvent(new Event('keyup', { bubbles: true }));
         editor.dispatchEvent(new Event('change', { bubbles: true }));
-        return { success: true, metodo: 'innerHTML_direto' };
+
+        // Aciona o Froala via seu próprio evento interno se disponível
+        try {
+            const frEvent = new CustomEvent('froalaEditor.contentChanged', { bubbles: true });
+            editor.dispatchEvent(frEvent);
+        } catch(_) {}
+
+        return { success: true, metodo: 'dom_antes_signature' };
     } catch (err) {
         return { success: false, erro: err.message };
     }
@@ -270,7 +260,7 @@ async function copiarResumoParaClipboard(htmlPreMontado = null) {
 ` + imagens.map(img => `
   <div style="border:1px solid #e0e0e0;border-radius:4px;padding:6px;background:#fafafa;">
     <small style="color:#888;display:block;margin-bottom:4px;">[${img.hora || ''}] ${img.autor || ''}</small>
-    <img src="${img.url}" alt="Imagem do chat" style="max-width:480px;max-height:400px;display:block;border-radius:2px;">
+    <img src="${img.url}" alt="Imagem do chat" style="width:100%;display:block;border-radius:2px;">
   </div>`).join('') + `\n</div>`;
                 textoImagens = '\n\n--- IMAGENS DO CHAT ---\n' +
                     imagens.map(img => `[${img.hora || ''}] ${img.autor || ''}: ${img.url}`).join('\n');
@@ -912,7 +902,7 @@ btnCapturar.addEventListener('click', async () => {
 ` + imagensCapturadas.map(img => `
   <div style="border:1px solid #e0e0e0;border-radius:4px;padding:6px;background:#fafafa;">
     <small style="color:#888;display:block;margin-bottom:4px;">[${img.hora || ''}] ${img.autor || ''}</small>
-    <img src="${img.url}" alt="Imagem do chat" style="max-width:480px;max-height:400px;display:block;border-radius:2px;">
+    <img src="${img.url}" alt="Imagem do chat" style="width:100%;display:block;border-radius:2px;">
   </div>`).join('') + `\n</div>`;
                             console.log(`[ChatSum] ${imagensCapturadas.length} imagem(ns) incluída(s)`);
                         }
