@@ -40,7 +40,7 @@
 ✅ Resumo gerado com sucesso via Gemini!
 ```
 
-**6.** Com o resumo na tela, clique em **"📋 Copiar com Formatação"** e cole no seu sistema de chamados.
+**6.** Com o resumo na tela, clique em **"📋 Copiar com Formatação"** e cole no seu sistema de chamados — ou, se a opção **Colar Automaticamente** estiver ativada (veja [Configurações](#-configurações)), o resumo (incluindo imagens do chat) já é inserido diretamente no campo de documentação do ticket, sem precisar copiar e colar manualmente.
 
 ### O que acontece durante a captura
 
@@ -197,9 +197,12 @@ Acesse em: clique no ícone do ChatSum → ⚙️
 | Modo Padrão | Define o modo de resumo padrão ao abrir |
 | Provedor de IA | Define qual IA usar por padrão |
 | Auto-copiar | Copia o resumo automaticamente após gerar |
+| Colar Automaticamente | Insere o resumo (texto + imagens do chat) diretamente no campo de documentação do ticket no Movidesk, sem precisar copiar e colar manualmente |
 | Notificações | Ativa notificações do Chrome |
 
 <p align="left"> <img src="docs/images/configuracao/geral-extensao.png" width="500"> </p>
+
+> **Nota:** A opção **Colar Automaticamente** requer que a aba de documentação do ticket esteja aberta no Movidesk. Caso o campo não seja encontrado, a extensão avisa e você pode colar manualmente com **"📋 Copiar com Formatação"**.
 
 ### Aba Servidor
 
@@ -253,6 +256,10 @@ Quando tiver vários tickets abertos no Movidesk, certifique-se de **clicar na a
 ### Copiar com formatação
 
 O botão **"Copiar com Formatação"** copia em HTML — ao colar em sistemas que aceitam HTML (tickets, e-mails, Google Docs), o texto aparece formatado com negrito e cores. Em editores de texto simples, aparece sem formatação.
+
+### Colar automaticamente na documentação
+
+Com a opção **Colar Automaticamente** ativada, o resumo — incluindo eventuais imagens capturadas do chat — é inserido diretamente no campo de documentação do ticket assim que fica pronto, dispensando o copiar e colar manual. Ideal para quem quer agilizar o fechamento de tickets.
 
 ### Histórico como backup
 
