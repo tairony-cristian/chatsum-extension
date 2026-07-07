@@ -234,7 +234,11 @@ class AIService:
             raise ProviderNotConfiguredError("GROQ_API_KEY não configurada")
 
         url = "https://api.groq.com/openai/v1/chat/completions"
-        modelos = ["llama-3.3-70b-versatile", "llama3-70b-8192", "mixtral-8x7b-32768"]
+        # ⭐ ATUALIZAÇÃO (jul/2026): llama-3.3-70b-versatile foi descontinuado pela Groq
+        # e será decomissionado em 16/08/2026. Substituído pelos modelos recomendados
+        # no aviso oficial da Groq: GPT OSS 120B e Qwen3.6 27B.
+        # llama-3.1-8b-instant mantido como fallback rápido/barato (ainda em produção).
+        modelos = ["openai/gpt-oss-120b", "qwen/qwen3.6-27b", "llama-3.1-8b-instant"]
 
         for modelo in modelos:
             for tentativa in range(1, self.MAX_RETRIES_SERVER_ERROR + 1):
