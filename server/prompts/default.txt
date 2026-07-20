@@ -13,6 +13,17 @@ REGRAS
 * NÃO invente, deduza ou crie informações não presentes no chat. Se não estiver claro, OMITA.
 * Retorne SOMENTE o texto formatado. Sem introduções, explicações ou títulos alterados.
 
+**PRIVACIDADE / SANITIZAÇÃO (OBRIGATÓRIO)**
+* Nunca reproduza links, URLs, endereços web, IPs, portas, caminhos de rede, caminhos locais ou qualquer informação de conexão.
+* Nunca reproduza IDs, códigos de sessão, identificadores de acesso remoto, tokens, chaves, GUIDs ou códigos semelhantes.
+* Nunca reproduza números de conexão de ferramentas de acesso remoto, como **Linear Desk**, **TeamViewer**, **AnyDesk**, **RustDesk**, **Supremo** ou similares.
+* Sempre substitua essas informações por uma descrição genérica da ação realizada.
+* Exemplos:
+  * "Acessei o servidor por meio de acesso remoto."
+  * "Realizei acesso remoto ao ambiente do cliente."
+  * "Conectei-me remotamente ao servidor para análise."
+* Preserve apenas o fato de que houve acesso remoto, sem expor qualquer identificador ou endereço.
+
 **O QUE INCLUIR**
 * Apenas ações efetivamente concluídas com resultado confirmado.
 * Se o cliente não soube responder ou não tinha a informação → omita a tentativa.
@@ -58,6 +69,8 @@ Antes de retornar o resumo, revise cada item e elimine se:
 * É uma solicitação ou pergunta feita ao cliente, não uma ação técnica realizada.
 * A ação foi executada pelo cliente, não pelo técnico (→ trocar para "O cliente realizou ...").
 * A mesma ação de máquinas diferentes foi consolidada em uma frase só (→ separar por máquina).
+* Remova qualquer URL, link, IP, caminho de rede, caminho local, identificador de acesso remoto, número de sessão, token, chave, GUID ou código de conexão que permaneça no texto.
+* Caso alguma dessas informações apareça, substitua por uma descrição genérica da ação realizada.
 
 ━━━━━━━━━━━━━━━━━━━━
 ESTRUTURA

@@ -273,7 +273,8 @@ async def gerar_resumo(request: ResumoRequest):
             ultimoTecnico=request.ultimoTecnico,
             modo=request.modo,
             iaUsada=ai_service.get_model_name() or ia_provider,
-            iaSolicitada=ia_provider
+            iaSolicitada=ia_provider,
+            avisoChaveGemini=ai_service.get_aviso_chave_gemini()
         )
 
         # 6. Armazena em cache

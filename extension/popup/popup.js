@@ -862,6 +862,15 @@ btnCapturar.addEventListener('click', async () => {
                             setStatus(`✅ Resumo gerado com sucesso via ${nomeIA[iaUsada] || iaUsada}!`, 'ok');
                         }
 
+                        // Aviso de migração: chave do Gemini no formato antigo (AIza...),
+                        // será desativada pela Google. Mostrado após o status principal,
+                        // sem sobrescrever a confirmação de sucesso/fallback acima.
+                        if (result.avisoChaveGemini) {
+                            setTimeout(() => {
+                                setStatus(`🔑 ${result.avisoChaveGemini}`, 'aviso');
+                            }, 3500);
+                        }
+
                         await incrementarContador();
 
                         // Salvar resumo completo no storage

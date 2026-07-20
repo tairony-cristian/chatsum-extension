@@ -13,6 +13,20 @@ from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
+# Prazo definido pela Google para desativação das chaves "Standard" (AIza...).
+# Após essa data, apenas chaves "Auth" (AQ...) funcionam.
+# Ref: https://ai.google.dev/gemini-api/docs/api-key
+GEMINI_STANDARD_KEY_DEADLINE = "setembro de 2026"
+
+
+def _is_auth_key_gemini(api_key: str) -> bool:
+    """
+    Detecta o tipo de chave do Gemini.
+    - Auth key (novo formato):      começa com 'AQ.'
+    - Standard key (formato antigo): começa com 'AIza'
+    """
+    return api_key.startswith("AQ.")
+
 
 # ─────────────────────────────────────────────
 # Helpers para parsing de erros do Gemini
@@ -60,7 +74,12 @@ class AIService:
     def __init__(self):
         self._validar_chaves()
         self.ultimo_modelo_usado = None
+        self.aviso_chave_gemini = None
         logger.info("[OK] AIService inicializado com suporte a Gemini, Groq e OpenAI")
+
+    def get_aviso_chave_gemini(self) -> Optional[str]:
+        """Retorna aviso de migração de chave do Gemini (se aplicável na última chamada)."""
+        return self.aviso_chave_gemini
 
     def _validar_chaves(self):
         """Valida que ao menos uma API key está configurada"""
@@ -153,6 +172,33 @@ class AIService:
         base_url = "https://generativelanguage.googleapis.com/v1beta"
         modelos = getattr(settings, 'GEMINI_MODELS', ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-pro-latest'])
 
+        # ⭐ Suporte aos dois formatos de chave do Gemini (jul/2026):
+        # - Auth key (AQ...)   -> autenticação via header Authorization: Bearer
+        # - Standard key (AIza...) -> autenticação via query param ?key= (formato antigo)
+        # A Google vai desativar chaves Standard em GEMINI_STANDARD_KEY_DEADLINE.
+        chave_eh_auth = _is_auth_key_gemini(settings.GEMINI_API_KEY)
+
+        if chave_eh_auth:
+            request_headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.GEMINI_API_KEY}",
+            }
+            request_params = {}
+            self.aviso_chave_gemini = None
+        else:
+            request_headers = {"Content-Type": "application/json"}
+            request_params = {"key": settings.GEMINI_API_KEY}
+            self.aviso_chave_gemini = (
+                "Sua chave do Gemini está no formato antigo (AIza...). "
+                f"A Google vai desativá-la em {GEMINI_STANDARD_KEY_DEADLINE}. "
+                "Gere uma nova chave em aistudio.google.com/apikey e atualize o "
+                "GEMINI_API_KEY antes do prazo."
+            )
+            logger.warning(
+                f"[Gemini] Usando chave Standard (AIza...). Será desativada em "
+                f"{GEMINI_STANDARD_KEY_DEADLINE}. Migre para uma chave Auth (AQ...)."
+            )
+
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {
@@ -176,12 +222,19 @@ class AIService:
                     with httpx.Client(timeout=settings.REQUEST_TIMEOUT) as client:
                         response = client.post(
                             url, json=payload,
-                            headers={"Content-Type": "application/json"},
-                            params={"key": settings.GEMINI_API_KEY}
+                            headers=request_headers,
+                            params=request_params
                         )
 
                     if response.status_code >= 400:
                         logger.error(f"[Gemini] Status {response.status_code}: {response.text[:300]}")
+
+                    if response.status_code == 401:
+                        tipo_chave = "Auth (AQ...)" if chave_eh_auth else "Standard (AIza...)"
+                        raise ProviderNotConfiguredError(
+                            f"Gemini rejeitou a chave configurada (tipo detectado: {tipo_chave}). "
+                            "Verifique se a GEMINI_API_KEY é válida e não expirou/foi revogada."
+                        )
 
                     if response.status_code == 429:
                         body = response.text
@@ -215,7 +268,7 @@ class AIService:
                             logger.info(f"[Gemini] OK com {modelo}")
                             return texto
 
-                except (DailyQuotaExceededError, RateLimitError, ServiceUnavailableError):
+                except (DailyQuotaExceededError, RateLimitError, ServiceUnavailableError, ProviderNotConfiguredError):
                     raise
                 except httpx.TimeoutException:
                     if tentativa == self.MAX_RETRIES_SERVER_ERROR:

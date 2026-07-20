@@ -62,6 +62,10 @@ class ResumoResponse(BaseModel):
     modo: str = Field(..., description="Modo usado para gerar")
     iaUsada: str = Field(default="gemini", description="Provedor de IA que gerou o resumo")
     iaSolicitada: str = Field(default="gemini", description="Provedor de IA solicitado pelo cliente")
+    avisoChaveGemini: Optional[str] = Field(
+        default=None,
+        description="Aviso de migração exibido quando a GEMINI_API_KEY está no formato antigo (Standard/AIza)"
+    )
     
     model_config = ConfigDict(
         json_schema_extra={

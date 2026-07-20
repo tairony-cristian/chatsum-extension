@@ -10,7 +10,7 @@
 4. [Seletor de IA](#-seletor-de-ia)
 5. [Modos de Resumo](#-modos-de-resumo)
 6. [Prompts Personalizados](#-prompts-personalizados)
-7. [Configurações](#-configurações)
+7. [Configurações](#configuracoes)
 8. [Dicas de Uso](#-dicas-de-uso)
 
 ---
@@ -186,7 +186,7 @@ Clique em **"🔄 Restaurar Padrão"** para voltar ao prompt original do sistema
 
 ---
 
-## ⚙️ Configurações
+## <a id="configuracoes"></a>
 
 Acesse em: clique no ícone do ChatSum → ⚙️
 
