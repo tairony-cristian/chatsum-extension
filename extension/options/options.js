@@ -508,17 +508,20 @@ async function resetPrompt() {
     if (response.ok) {
       const data = await response.json();
       promptCustomTextarea.value = data.prompt;
+      // Cacheia localmente para servir de fallback caso o servidor fique
+      // indisponível numa próxima tentativa (evita duplicar o texto no código)
+      await chrome.storage.local.set({ promptPadraoCache: data.prompt });
       mostrarToast('✅ Prompt padrão restaurado', 'success');
     } else {
-      // Fallback: usa prompt padrão embutido
-      promptCustomTextarea.value = getPromptPadraoFallback();
-      mostrarToast('✅ Prompt padrão restaurado (offline)', 'success');
+      // Servidor respondeu com erro: usa último prompt padrão conhecido
+      promptCustomTextarea.value = await getPromptPadraoFallback();
+      mostrarToast('⚠️ Prompt padrão restaurado (offline — última versão conhecida)', 'warning');
     }
     
   } catch (erro) {
     console.error('Erro ao buscar prompt:', erro);
-    promptCustomTextarea.value = getPromptPadraoFallback();
-    mostrarToast('✅ Prompt padrão restaurado (fallback)', 'success');
+    promptCustomTextarea.value = await getPromptPadraoFallback();
+    mostrarToast('⚠️ Prompt padrão restaurado (offline — última versão conhecida)', 'warning');
   }
 }
 
@@ -715,86 +718,25 @@ function obterDataHoje() {
 }
 
 /**
- * Prompt padrão fallback (caso servidor esteja offline)
+ * Prompt padrão fallback (caso servidor esteja indisponível no momento).
+ * Não é mais texto fixo duplicado: usa a última versão do prompt padrão
+ * (default.txt) que foi buscada com sucesso do servidor e cacheada em
+ * chrome.storage.local. Editar apenas o default.txt no servidor é
+ * suficiente — não há texto do prompt hardcoded aqui.
  */
-function getPromptPadraoFallback() {
-  return `Aja como um **Analista de Suporte Sênior**. Tom: **técnico, direto, objetivo e profissional**.
+async function getPromptPadraoFallback() {
+  try {
+    const { promptPadraoCache } = await chrome.storage.local.get('promptPadraoCache');
+    if (promptPadraoCache) {
+      return promptPadraoCache;
+    }
+  } catch (erro) {
+    console.error('[Prompt] Erro ao ler cache do prompt padrão:', erro);
+  }
 
-Resuma o atendimento usando **APENAS** as mensagens do cliente e do técnico **{ultimo_tecnico}**.
-
-━━━━━━━━━━━━━━━━━━━━
-REGRAS
-━━━━━━━━━━━━━━━━━━━━
-
-**ESCRITA**
-* **FILTRO OBRIGATÓRIO:** Use APENAS mensagens onde o remetente é exatamente **{ultimo_tecnico}** e mensagens do cliente. Qualquer mensagem de outro remetente deve ser completamente ignorada — não descreva, não mencione, não resuma.
-* Escreva em **primeira pessoa** ("realizei", "verifiquei", "instalei") — NUNCA use "verificou-se", "foi realizado" ou terceira pessoa.
-* Se a ação foi executada pelo cliente sob orientação, escreva: "Orientei o cliente a..." ou "O cliente realizou... conforme orientação."
-* NÃO invente, deduza ou crie informações não presentes no chat. Se não estiver claro, OMITA.
-* Retorne SOMENTE o texto formatado. Sem introduções, explicações ou títulos alterados.
-
-**O QUE INCLUIR**
-* Apenas ações efetivamente concluídas com resultado confirmado.
-* Se o cliente não soube responder ou não tinha a informação → omita a tentativa.
-* Se o técnico perguntou e não obteve retorno → omita.
-* Preserve termos técnicos: XML, NFC-e, SPED, PDV, NCM, contingência, supervisores, cadastro, reinstalação.
-* Não substitua procedimentos específicos por descrições genéricas.
-
-**MÚLTIPLAS MÁQUINAS / PDVs**
-* Descreva ações de cada ambiente separadamente, identificando pelo nome ou número do chat.
-* Errado: "Instalei o sistema nas máquinas." → Correto: item separado para cada máquina.
-
-**RASTREAMENTO DE DEMANDAS**
-* Antes de escrever a solução, verifique internamente cada demanda mencionada:
-  - Concluída (com ou sem confirmação) → resolvida.
-  - Causa raiz corrigida → considerar resolvida (ex: divergências de XML corrigidas = SPED liberado).
-  - Iniciada sem conclusão → pendente.
-  - Mencionada mas não iniciada → pendente.
-* Se houver qualquer pendência → use status parcial.
-
-**STATUS FINAL**
-* Cliente agradeceu sem novas solicitações → **Ticket Finalizado.**
-* Cliente confirmou explicitamente → mencione: "Cliente validou o funcionamento." + **Ticket Finalizado.**
-* Cliente não respondeu após conclusão → **Ticket Finalizado.**
-* Qualquer demanda incompleta → status parcial obrigatório.
-
-**FORMATAÇÃO**
-* Títulos EXATAMENTE: 🔴 PROBLEMA RELATADO: / 🟡 ANÁLISE TÉCNICA: / 🟢 SOLUÇÃO APRESENTADA:
-* Múltiplos problemas → separe dentro do mesmo resumo, nunca gere tickets separados.
-* Use **negrito** obrigatoriamente em TODAS as seções:
-  - Nomes de sistemas e módulos: **SGLinear**, **PDV**, **Godex**, **cotação web**, **SGRLinear**
-  - Erros e mensagens de erro: **erro de comunicação**, **driver não encontrado**
-  - Ações técnicas importantes: **instalei o driver**, **recriei os XML**, **abri os supervisores**
-  - Parâmetros e configurações: **parâmetro X**, **configuração automática**
-  - Status finais: **Ticket Finalizado.**, **Parcialmente resolvido.**
-* Listas sempre com "*".
-
-━━━━━━━━━━━━━━━━━━━━
-AUTO-VERIFICAÇÃO (execute antes de retornar)
-━━━━━━━━━━━━━━━━━━━━
-
-Antes de retornar o resumo, revise cada item e elimine se:
-* O cliente disse que NÃO SABIA ou NÃO TINHA a informação solicitada.
-* É uma solicitação ou pergunta feita ao cliente, não uma ação técnica realizada.
-* A ação foi executada pelo cliente, não pelo técnico (→ trocar para "O cliente realizou ...").
-* A mesma ação de máquinas diferentes foi consolidada em uma frase só (→ separar por máquina).
-
-━━━━━━━━━━━━━━━━━━━━
-ESTRUTURA
-━━━━━━━━━━━━━━━━━━━━
-
-🔴 PROBLEMA RELATADO:
-* Sistema/módulo afetado, erro ou comportamento anormal, impacto no cliente.
-
-🟡 ANÁLISE TÉCNICA:
-* Descreva as ações em sequência lógica, sem separar por "Para o problema X:".
-* Verificações concluídas, diagnósticos, causa identificada (só se explícita no chat).
-* Use frases completas e descritivas: "Acessei a máquina via acesso remoto e verifiquei o **Fechamento de Caixa**, identificando que a diferença de **R$ 25,99** era decorrente de lançamento manual incorreto."
-
-🟢 SOLUÇÃO APRESENTADA:
-* Descreva as soluções em sequência lógica, sem separar por "Para o problema X:".
-* Ações resolutivas, orientações, confirmação de funcionamento, pendências.
-* Finalize: **Ticket Finalizado.** / **Parcialmente resolvido.** / **Aguardando novo contato.** / **Demanda pendente para próximo atendimento.**`;
+  // Nunca buscamos o prompt padrão do servidor com sucesso nesta instalação.
+  return 'Não foi possível carregar o prompt padrão (servidor indisponível e nenhuma versão em cache). ' +
+         'Conecte-se ao servidor pelo menos uma vez para armazenar uma cópia local.';
 }
 
 /**
