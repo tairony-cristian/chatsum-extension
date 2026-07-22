@@ -13,17 +13,18 @@ from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-# Prazo definido pela Google para desativação das chaves "Standard" (AIza...).
-# Após essa data, apenas chaves "Auth" (AQ...) funcionam.
-# Ref: https://ai.google.dev/gemini-api/docs/api-key
-GEMINI_STANDARD_KEY_DEADLINE = "setembro de 2026"
-
 
 def _is_auth_key_gemini(api_key: str) -> bool:
     """
     Detecta o tipo de chave do Gemini.
     - Auth key (novo formato):      começa com 'AQ.'
     - Standard key (formato antigo): começa com 'AIza'
+
+    Chaves AIza continuam válidas e não têm desligamento agendado — o que
+    mudou foi apenas que o Console do Google Cloud passou a emitir novas
+    chaves vinculadas a uma Service Account, gerando o prefixo AQ. As duas
+    formas de autenticação (?key= vs x-goog-api-key) continuam necessárias
+    porque os dois formatos de chave usam mecanismos diferentes.
     """
     return api_key.startswith("AQ.")
 
@@ -172,32 +173,20 @@ class AIService:
         base_url = "https://generativelanguage.googleapis.com/v1beta"
         modelos = getattr(settings, 'GEMINI_MODELS', ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-pro-latest'])
 
-        # ⭐ Suporte aos dois formatos de chave do Gemini (jul/2026):
-        # - Auth key (AQ...)   -> autenticação via header Authorization: Bearer
+        # ⭐ Suporte aos dois formatos de chave do Gemini:
+        # - Auth key (AQ...)       -> autenticação via header x-goog-api-key
         # - Standard key (AIza...) -> autenticação via query param ?key= (formato antigo)
-        # A Google vai desativar chaves Standard em GEMINI_STANDARD_KEY_DEADLINE.
         chave_eh_auth = _is_auth_key_gemini(settings.GEMINI_API_KEY)
 
         if chave_eh_auth:
             request_headers = {
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {settings.GEMINI_API_KEY}",
+                "x-goog-api-key": settings.GEMINI_API_KEY,
             }
             request_params = {}
-            self.aviso_chave_gemini = None
         else:
             request_headers = {"Content-Type": "application/json"}
             request_params = {"key": settings.GEMINI_API_KEY}
-            self.aviso_chave_gemini = (
-                "Sua chave do Gemini está no formato antigo (AIza...). "
-                f"A Google vai desativá-la em {GEMINI_STANDARD_KEY_DEADLINE}. "
-                "Gere uma nova chave em aistudio.google.com/apikey e atualize o "
-                "GEMINI_API_KEY antes do prazo."
-            )
-            logger.warning(
-                f"[Gemini] Usando chave Standard (AIza...). Será desativada em "
-                f"{GEMINI_STANDARD_KEY_DEADLINE}. Migre para uma chave Auth (AQ...)."
-            )
 
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
