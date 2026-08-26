@@ -11,6 +11,7 @@ import logging
 from typing import Optional
 import sys
 import os
+import re
 from contextlib import asynccontextmanager
 
 # Importações locais
@@ -31,6 +32,34 @@ from services.ai_service import (
 )
 from services.sanitizer import DataSanitizer
 from prompts.prompt_manager import PromptManager
+
+def filtrar_por_tecnico(texto: str, ultimo_tecnico: str, todos_tecnicos: list[str]) -> str:
+    """Remove deterministicamente blocos de mensagem de técnicos que não sejam o último."""
+    if not ultimo_tecnico or not todos_tecnicos:
+        return texto  # sem dados suficientes, não filtra (fallback seguro)
+
+    outros = {
+        t.strip().lower() for t in todos_tecnicos
+        if t.strip().lower() != ultimo_tecnico.strip().lower()
+    }
+    if not outros:
+        return texto
+
+    # cada bloco começa com "[hora] Autor:\n" (formato gerado pelo content.js)
+    blocos = re.split(r'(?=\[\d{1,2}:\d{2}\] )', texto)
+    mantidos = []
+    for b in blocos:
+        if not b.strip():
+            continue
+        try:
+            autor = b.split('] ', 1)[1].split(':\n', 1)[0].strip().lower()
+        except IndexError:
+            mantidos.append(b)  # não conseguiu parsear, mantém por segurança
+            continue
+        if autor not in outros:
+            mantidos.append(b)
+
+    return "\n\n".join(mantidos).strip()
 
 # ============================================
 # CONFIGURAÇÃO DE ENCODING (Windows Fix)
@@ -171,6 +200,13 @@ async def gerar_resumo(request: ResumoRequest):
         texto_limpo = DataSanitizer.sanitize(request.texto)
         if DataSanitizer.contains_sensitive_data(request.texto):
             logger.warning("⚠️ Dados sensíveis foram sanitizados")
+
+        # 1.5 Pré-filtra por técnico (apenas modo ultimo_tecnico)
+        if request.modo == "ultimo_tecnico":
+            texto_antes = len(texto_limpo)
+            texto_limpo = filtrar_por_tecnico(texto_limpo, request.ultimoTecnico, request.todosTecnicos)
+            if len(texto_limpo) != texto_antes:
+                logger.info(f"🔍 Filtro por técnico aplicado: {texto_antes} → {len(texto_limpo)} chars")
 
         # 2. Valida tamanho
         if len(texto_limpo) < settings.MIN_CHAT_LENGTH:

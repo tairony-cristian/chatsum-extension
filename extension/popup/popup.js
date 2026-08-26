@@ -822,6 +822,7 @@ btnCapturar.addEventListener('click', async () => {
                     const payloadResumo = {
                         texto: response.chat,
                         ultimoTecnico: response.ultimoTecnico || '',
+                        todosTecnicos: response.todosTecnicos || [],
                         modo: modo,
                         iaProvider: iaProvider
                     };

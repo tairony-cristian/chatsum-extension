@@ -142,6 +142,7 @@ const PLATAFORMAS = {
           success: true,
           chat: chatFormatado,
           ultimoTecnico: ultimoTecnico,
+           todosTecnicos: tecnicosChat, 
           ticket: dadosTicket,
           imagens: todasImagens,
           metadata: {

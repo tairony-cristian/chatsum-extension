@@ -23,6 +23,11 @@ class ResumoRequest(BaseModel):
         max_length=100,
         description="Nome do último técnico que atendeu"
     )
+
+    todosTecnicos: Optional[list[str]] = Field(
+        default_factory=list,
+        description="Lista de todos os técnicos que participaram do atendimento (usado para pré-filtrar por técnico)"
+    )
     
     modo: Literal["completo", "ultimo_tecnico"] = Field(
         default="ultimo_tecnico",

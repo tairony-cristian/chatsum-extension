@@ -244,6 +244,27 @@ function registrarEventListeners() {
   btnImportar.addEventListener('click', () => fileImport.click());
   fileImport.addEventListener('change', importarConfiguracoes);
 
+  // Modo Debug — salva no storage e avisa o content script da aba ativa
+  debugModeCheck.addEventListener('change', async () => {
+    const ativado = debugModeCheck.checked;
+    await chrome.storage.local.set({ debugMode: ativado });
+    console.log('[Config] Modo Debug:', ativado ? 'ativado' : 'desativado');
+
+    // Notifica a aba ativa (se houver content script rodando nela)
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        chrome.tabs.sendMessage(tab.id, { action: 'enableDebug', enabled: ativado }).catch(() => {
+          // Ignora erro se não houver content script na aba (ex: aba de configurações)
+        });
+      }
+    } catch (erro) {
+      console.warn('[Config] Não foi possível notificar a aba ativa:', erro.message);
+    }
+
+    mostrarToast(ativado ? '🐛 Modo Debug ativado' : 'Modo Debug desativado', 'success');
+  });
+
   // ============================================
   // EVENTOS - OUTROS
   // ============================================
